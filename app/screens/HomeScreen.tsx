@@ -10,33 +10,34 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export default function HomeScreen() {
-  const [status, setStatus] = useState('Uploading test hunt...');
+  const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigation = useNavigation<HomeScreenNavigationProp>();
 
-  useEffect(() => {
-    const uploadTestHunt = async () => {
-      try {
-        const docRef = await addDoc(collection(db, 'hunts'), {
-          hunter: 'Josh',
-          score: 155,
-          timestamp: new Date().toISOString(),
-          location: 'Test Spot'
-        });
-        console.log('Hunt uploaded with ID:', docRef.id);
-        setStatus('Test hunt successfully uploaded!');
-      } catch (error) {
-        console.error('Error uploading hunt:', error);
-        setStatus('Upload failed. Check console.');
-      }
-    };
-
-    uploadTestHunt();
-  }, []);
+  const uploadTestHunt = async () => {
+    setStatus('Uploading test hunt...');
+    setLoading(true);
+    try {
+      const docRef = await addDoc(collection(db, 'hunts'), {
+        hunter: 'Josh',
+        score: 155,
+        timestamp: new Date().toISOString(),
+        location: 'Test Spot'
+      });
+      console.log('Hunt uploaded with ID:', docRef.id);
+      setStatus('Test hunt successfully uploaded!');
+    } catch (error) {
+      console.error('Error uploading hunt:', error);
+      setStatus('Upload failed. Check console.');
+    }
+    setLoading(false);
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.text}>{status}</Text>
       {status.includes('Uploading') && <ActivityIndicator size="large" color="#888" />}
+      <Button title="Upload Test Hunt" onPress={uploadTestHunt} />
       <Button title="Go to Profile" onPress={() => navigation.navigate('Profile')} />
     </View>
   );
