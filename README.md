@@ -14,6 +14,7 @@ cd Buck-Shot
 
 ### 3. Install Dependencies
 npm install
+expo install react-native-svg
 
 ### 4. Run the app
 npx expo start
