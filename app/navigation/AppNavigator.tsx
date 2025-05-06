@@ -2,10 +2,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator, NativeStackNavigationOptions, } from '@react-navigation/native-stack';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import MeasureScreen from '../screens/MeasureScreen';
 
 export type RootStackParamList = {
   Home: undefined;
   Profile: undefined;
+  Measure: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -25,6 +27,7 @@ export default function AppNavigator() {
       screenOptions={commonHeaderOptions}>
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="Measure" component={MeasureScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
