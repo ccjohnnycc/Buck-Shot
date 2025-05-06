@@ -39,4 +39,30 @@ josh	Josh's development work
 Contributors:
 Johnny Rosas – @ccjohnnycc
 
-Josh Brouillette – @josh add your git username here.... or else. also add anything you need to this doc 
+///
+Frontend
+Implemented HomeScreen with basic Firestore integration:
+
+uploads a test hunt entry on button press.
+
+Displays upload status with loading indicator and result message.
+
+Created ProfileScreen with placeholder UI:
+
+Includes avatar icon, static stats, and an “Edit Profile” button.
+
+Uses Feather icon from @expo/vector-icons.
+
+Navigation
+Integrated @react-navigation/native and @react-navigation/native-stack.
+
+Created AppNavigator with two defined routes: Home and Profile.
+
+Added navigation button from HomeScreen to ProfileScreen.
+
+Backend (Firebase)
+Configured Firebase and connected Firestore database.
+
+Verified write operations using addDoc() to store test data in a hunts collection.
+
+Setup ready for future Firestore reads and Firebase Authentication.
