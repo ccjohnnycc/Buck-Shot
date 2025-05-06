@@ -40,7 +40,9 @@ export default function HomeScreen() {
                         />
                     </View>
                     <View style={styles.button}>
-                        <Button title="Capture Measurement" onPress={() => { }} />
+                        <Button 
+                        title="Capture Measurement" 
+                        onPress={() => navigation.navigate('Measure')} />
                     </View>
                     <View style={styles.button}>
                         <Button title="Continue as Guest" onPress={() => { }} />
