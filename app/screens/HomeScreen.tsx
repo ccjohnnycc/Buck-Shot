@@ -12,38 +12,41 @@ export default function HomeScreen() {
     const navigation = useNavigation<HomeNavProp>();
 
     return (
-        <ImageBackground
-            source={homeScreenImage}
-            style={styles.background}
-            resizeMode="cover"
-        >
-        <Image
-            source={homeTitle}
-            style={styles.titleImage}
-            resizeMode="contain"
-        />
-            {/* tint overlay */}
+        <ImageBackground source={homeScreenImage} style={styles.background}>
             <View style={styles.overlay} />
-            <SafeAreaView style={styles.container}>
 
-                <View style={styles.buttonGroup}>
+            <SafeAreaView style={styles.container}>
+                {/* HEADER */}
+                <View style={styles.header}>
+                    <Image
+                        source={homeTitle}
+                        style={styles.titleImage}
+                        resizeMode="contain"
+                    />
+                </View>
+
+                {/* BODY */}
+                <View style={styles.body}>
                     <View style={styles.button}>
-                        <Button title="Sign Up" onPress={() => {/* navigate to SignUp */ }} />
+                        <Button title="Sign Up" onPress={() => { }} />
                     </View>
                     <View style={styles.button}>
-                        <Button title="Sign In" onPress={() => {/* navigate to SignIn */ }} />
+                        <Button title="Sign In" onPress={() => { }} />
                     </View>
                     <View style={styles.button}>
-                        <Button title="Profile" onPress={() => navigation.navigate('Profile')} />
+                        <Button
+                            title="Profile"
+                            onPress={() => navigation.navigate('Profile')}
+                        />
                     </View>
                     <View style={styles.button}>
-                        <Button title="Capture Measurement" onPress={() => {/* navigate to Measure */ }} />
+                        <Button title="Capture Measurement" onPress={() => { }} />
                     </View>
                     <View style={styles.button}>
-                        <Button title="Continue as Guest" onPress={() => {/* guest flow */ }} />
+                        <Button title="Continue as Guest" onPress={() => { }} />
                     </View>
                     <View style={styles.button}>
-                        <Button title="Weather" onPress={() => {/* navigate to Weather */ }} />
+                        <Button title="Weather" onPress={() => { }} />
                     </View>
                 </View>
             </SafeAreaView>
@@ -55,7 +58,6 @@ const styles = StyleSheet.create({
     background: {
         flex: 1,
         width: '100%',
-        height: '100%',
     },
     overlay: {
         ...StyleSheet.absoluteFillObject,
@@ -63,21 +65,21 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
-        padding: 24,
+    },
+    header: {
+        flex: 1.2,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'transparent',
     },
     titleImage: {
-        position: 'absolute',
-        top: 60,
         width: '60%',
+        maxWidth: 240,
         aspectRatio: 3,
-        alignSelf: 'center',
     },
-    buttonGroup: {
-        width: '100%',
+    body: {
+        flex: 2.8,
         alignItems: 'center',
+        justifyContent: 'flex-start',
     },
     button: {
         width: '80%',
