@@ -3,11 +3,17 @@ import { createNativeStackNavigator, NativeStackNavigationOptions, } from '@reac
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import MeasureScreen from '../screens/MeasureScreen';
+import LoginScreen from '../screens/LoginScreen';
+import AuthScreen from '../screens/AuthScreen';
+import SignupScreen from '../screens/SignupScreen';
 
 export type RootStackParamList = {
   Home: undefined;
   Profile: undefined;
   Measure: undefined;
+  Login: undefined;
+  Signup: undefined;
+  AuthLanding: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -23,11 +29,14 @@ const commonHeaderOptions: NativeStackNavigationOptions = {
 export default function AppNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Home"
+      <Stack.Navigator initialRouteName="AuthLanding"
       screenOptions={commonHeaderOptions}>
-        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ headerBackVisible: false }} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="Measure" component={MeasureScreen} />
+        <Stack.Screen name="AuthLanding" component={AuthScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Signup" component={SignupScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
