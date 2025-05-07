@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Button, SafeAreaView, ImageBackground, Image } from 'react-native';
+import { View, Text, StyleSheet, Button, SafeAreaView, ImageBackground, Image, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -27,12 +27,6 @@ export default function HomeScreen() {
 
                 {/* BODY */}
                 <View style={styles.body}>
-                    <View style={styles.button}>
-                        <Button title="Sign Up" onPress={() => { }} />
-                    </View>
-                    <View style={styles.button}>
-                        <Button title="Sign In" onPress={() => { }} />
-                    </View>
                     <View style={styles.button}>
                         <Button
                             title="Profile"
