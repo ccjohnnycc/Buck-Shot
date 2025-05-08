@@ -33,13 +33,11 @@ export default function HomeScreen() {
                             onPress={() => navigation.navigate('Profile')}
                         />
                     </View>
+                    <Button title="View Gallery" onPress={() => navigation.navigate('Gallery')} />
                     <View style={styles.button}>
                         <Button 
                         title="Capture Measurement" 
                         onPress={() => navigation.navigate('Measure')} />
-                    </View>
-                    <View style={styles.button}>
-                        <Button title="Continue as Guest" onPress={() => { }} />
                     </View>
                     <View style={styles.button}>
                         <Button title="Weather" onPress={() => { }} />

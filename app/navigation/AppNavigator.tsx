@@ -6,6 +6,7 @@ import MeasureScreen from '../screens/MeasureScreen';
 import LoginScreen from '../screens/LoginScreen';
 import AuthScreen from '../screens/AuthScreen';
 import SignupScreen from '../screens/SignupScreen';
+import GalleryScreen from '../screens/GalleryScreen';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -14,6 +15,7 @@ export type RootStackParamList = {
   Login: undefined;
   Signup: undefined;
   AuthLanding: undefined;
+  Gallery: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -37,6 +39,7 @@ export default function AppNavigator() {
         <Stack.Screen name="AuthLanding" component={AuthScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
+        <Stack.Screen name="Gallery" component={GalleryScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
