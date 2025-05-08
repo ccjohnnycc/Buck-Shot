@@ -34,12 +34,16 @@ export default function HomeScreen() {
                         />
                     </View>
                     <View style={styles.button}>
-                        <Button 
-                        title="Capture Measurement" 
-                        onPress={() => navigation.navigate('Measure')} />
+                     <Button 
+                     title="View Gallery" 
+                     onPress={() => navigation.navigate('Gallery')} 
+                     />
                     </View>
                     <View style={styles.button}>
-                        <Button title="Continue as Guest" onPress={() => { }} />
+                        <Button 
+                        title="Capture Measurement" 
+                        onPress={() => navigation.navigate('Measure')} 
+                        />
                     </View>
                     <View style={styles.button}>
                         <Button title="Weather" onPress={() => { }} />
@@ -78,7 +82,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-start',
     },
     button: {
-        width: '80%',
+        width: '60%',
         marginVertical: 8,
     },
 });

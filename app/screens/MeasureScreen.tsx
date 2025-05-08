@@ -4,6 +4,9 @@ import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import Slider from '@react-native-community/slider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { calculatePixelDistance, convertPixelsToInches } from '../utils/measurement';
+import * as FileSystem from 'expo-file-system';
+import type { CameraView as CameraViewRef } from 'expo-camera';
+
 
 const { width } = Dimensions.get('window');
 
@@ -13,6 +16,8 @@ export default function MeasureScreen({ navigation }: any) {
     // Stores the two user-selected tap points on the camera screen
     const [points, setPoints] = useState<{ x: number, y: number }[]>([]);
     const [distanceFromCamera, setDistanceFromCamera] = useState(36);
+    const cameraRef = useRef<CameraViewRef | null>(null);
+    const [capturedUri, setCapturedUri] = useState<string | null>(null);
     const [calibration, setCalibration] = useState<{
         pixelsPerInch: number,
         calibrationDistance: number
@@ -137,6 +142,40 @@ export default function MeasureScreen({ navigation }: any) {
                     </View>
                 )}
             </View>
+            {/* Show capture button after 2 points are selected */}
+{points.length === 2 && (
+  <View style={styles.captureButton}>
+    <Button title="Capture Image" onPress={async () => {
+      if (cameraRef.current) {
+        const photo = await cameraRef.current.takePictureAsync();
+        setCapturedUri(photo.uri);
+      }
+    }} />
+  </View>
+)}
+
+{/* Show save button after capturing */}
+{capturedUri && (
+  <View style={styles.saveButton}>
+    <Button title="Save to Device" onPress={async () => {
+      try {
+        const fileName = `hunt_${Date.now()}.jpg`;
+        const localUri = FileSystem.documentDirectory + fileName;
+
+        await FileSystem.moveAsync({
+          from: capturedUri,
+          to: localUri,
+        });
+
+        Alert.alert("Saved!", `Saved locally at:\n${localUri}`);
+        setCapturedUri(null);
+      } catch (err) {
+        console.error("Save error:", err);
+        Alert.alert("Failed to save locally.");
+      }
+    }} />
+  </View>
+)}
         </View>
     );
 }
@@ -193,4 +232,14 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 16,
     },
+    captureButton: {
+        position: 'absolute',
+        bottom: 10,
+        alignSelf: 'center',
+      },
+      saveButton: {
+        position: 'absolute',
+        bottom: 80,
+        alignSelf: 'center',
+      },
 });
