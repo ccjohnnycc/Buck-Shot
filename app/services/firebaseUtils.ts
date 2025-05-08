@@ -1,5 +1,5 @@
 import { collection, addDoc } from 'firebase/firestore';
-import { db } from './FirebaseConfig';
+import { db } from './firebaseConfig';
 
 export async function uploadTestHunt() {
   try {
