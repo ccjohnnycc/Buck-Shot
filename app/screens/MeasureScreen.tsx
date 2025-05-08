@@ -1,18 +1,36 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Button } from 'react-native';
-import { CameraView, CameraType, useCameraPermissions, Camera } from 'expo-camera';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Button, Alert } from 'react-native';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import Slider from '@react-native-community/slider';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { calculatePixelDistance, convertPixelsToInches } from '../utils/measurement';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
-export default function MeasureScreen() {
+export default function MeasureScreen({ navigation }: any) {
     const [facing, setFacing] = useState<CameraType>('back');
     const [permission, requestPermission] = useCameraPermissions();
     // Stores the two user-selected tap points on the camera screen
     const [points, setPoints] = useState<{ x: number, y: number }[]>([]);
-    const [distanceFromCamera, setDistanceFromCamera] = useState(24);
+    const [distanceFromCamera, setDistanceFromCamera] = useState(36);
+    const [calibration, setCalibration] = useState<{
+        pixelsPerInch: number,
+        calibrationDistance: number
+    } | null>(null);
 
-
+    useEffect(() => {
+        const loadCalibration = async () => {
+            const data = await AsyncStorage.getItem('calibration');
+            if (data) {
+                setCalibration(JSON.parse(data));
+            } else {
+                Alert.alert("Calibration Required", "Please calibrate before measuring.", [
+                    { text: "Go to Calibrate", onPress: () => navigation.navigate('Calibration') }
+                ]);
+            }
+        };
+        loadCalibration();
+    }, []);
 
     /* CAMERA PERMISSION */
     if (!permission) {
@@ -45,7 +63,7 @@ export default function MeasureScreen() {
         }
     };
 
-    // Calculate distance between two points in pixels
+    /*// Calculate distance between two points in pixels
     const calculatePixelDistance = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
         const dx = p2.x - p1.x;
         const dy = p2.y - p1.y;
@@ -63,7 +81,7 @@ export default function MeasureScreen() {
         const realWorldWidthAtDistance = 2 * distanceFromCamera * Math.tan(fovRadians / 2);
         const pixelsPerInch = screenWidth / realWorldWidthAtDistance;
         return pixelDistance / pixelsPerInch;
-    };
+    };*/
 
 
 
@@ -74,7 +92,7 @@ export default function MeasureScreen() {
             <View style={styles.camera}>
 
                 {/* Live camera feed */}
-                <CameraView style={StyleSheet.absoluteFill} facing={facing} />
+                <CameraView key={Date.now()} style={StyleSheet.absoluteFill} facing={facing} />
 
                 {/* Transparent overlay to detect tap events */}
                 <TouchableOpacity
@@ -106,17 +124,21 @@ export default function MeasureScreen() {
                         onValueChange={setDistanceFromCamera}
                     />
                 </View>
-                {points.length === 2 && (
+                {points.length === 2 && calibration && (
                     <View style={styles.resultContainer}>
                         <Text style={styles.resultText}>
-                            Measured Distance: {convertPixelsToInches(calculatePixelDistance(points[0], points[1]), distanceFromCamera, width).toFixed(2)} inches
+                            Measured Distance: {convertPixelsToInches(
+                                calculatePixelDistance(points[0], points[1]),
+                                distanceFromCamera,
+                                calibration.calibrationDistance,
+                                calibration.pixelsPerInch
+                            ).toFixed(2)} inches
                         </Text>
                     </View>
                 )}
             </View>
         </View>
     );
-
 }
 
 const styles = StyleSheet.create({
