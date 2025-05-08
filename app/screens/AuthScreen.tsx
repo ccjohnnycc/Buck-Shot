@@ -30,10 +30,10 @@ export default function AuthLandingScreen() {
           <Text style={styles.buttonText}>Sign up</Text>
         </TouchableOpacity>
 
-        <Text style={styles.orText}>OR</Text>
+        <Text style={styles.orText}>OR </Text>
 
         <TouchableOpacity style={styles.guestButton} onPress={() => navigation.navigate('Home')}>
-          <Text style={styles.guestText}>Continue as guest</Text>
+          <Text style={styles.guestText}>Continue as guest </Text>
         </TouchableOpacity>
 
         <TouchableOpacity>
@@ -41,7 +41,7 @@ export default function AuthLandingScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity>
-          <Text style={styles.link}>Privacy Policy</Text>
+          <Text style={styles.link}>Privacy Policy </Text>
         </TouchableOpacity>
       </ScrollView>
     </ImageBackground>
