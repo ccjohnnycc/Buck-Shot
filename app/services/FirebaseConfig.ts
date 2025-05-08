@@ -1,14 +1,15 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp } from "firebase/app";
 import { getFirestore } from 'firebase/firestore';
 
+
 const firebaseConfig = {
-  apiKey: 'AIzaSyBhfVwyoXdxtoXJf5ap1v6aABcuK7r_EiY',
-  authDomain: 'buck-shot-af4b8.firebaseapp.com',
-  projectId: 'buck-shot-af4b8',
-  storageBucket: 'buck-shot-af4b8.appspot.com',
-  messagingSenderId: '918908934762',
-  appId: '1:918908934762:web:9c006642ab85a506f5c813',
-  measurementId: 'G-H0SFZ0YC0K',
+  apiKey: "AIzaSyAJtgyqEefDpGum1bJtsij7wj78baGnSBU",
+  authDomain: "buckshot-app-v2.firebaseapp.com",
+  projectId: "buckshot-app-v2",
+  storageBucket: "buckshot-app-v2.firebasestorage.app",
+  messagingSenderId: "610651736628",
+  appId: "1:610651736628:web:f983649809654936d65861",
+  measurementId: "G-RD2P31S9YM"
 };
 
 const app = initializeApp(firebaseConfig);

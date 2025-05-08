@@ -3,6 +3,9 @@ import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { db } from '../services/firebaseConfig';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+
 
 type LoginNavProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -11,17 +14,31 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const navigation = useNavigation<LoginNavProp>();
 
-  const handleLogin = () => {
-    if (email && password) {
-      navigation.navigate('Home');
-    } else {
+  const handleLogin = async () => {
+    if (!email || !password) {
       Alert.alert('Please fill in both fields');
+      return;
+    }
+
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', email), where('password', '==', password));
+      const result = await getDocs(q);
+
+      if (result.empty) {
+        Alert.alert('Invalid email or password');
+        return;
+      }
+
+      navigation.navigate('Home');
+    } catch (err: any) {
+      Alert.alert('Login failed', err.message);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sign in</Text>
+      <Text style={styles.title}>Sign In</Text>
       <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} />
       <TextInput style={styles.input} placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} />
       <Button title="Login" onPress={handleLogin} />
@@ -31,6 +48,6 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: 20 },
-  title: { fontSize: 24, marginBottom: 20, textAlign: 'center' },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 12 },
+  title: { fontSize: 24, textAlign: 'center', marginBottom: 20 },
+  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 12 }
 });
