@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { calculatePixelDistance, convertPixelsToInches } from '../utils/measurement';
 import * as FileSystem from 'expo-file-system';
 import type { CameraView as CameraViewRef } from 'expo-camera';
+import { useIsFocused } from '@react-navigation/native';
 
 
 const { width } = Dimensions.get('window');
@@ -22,6 +23,8 @@ export default function MeasureScreen({ navigation }: any) {
         pixelsPerInch: number,
         calibrationDistance: number
     } | null>(null);
+    const isFocused = useIsFocused();
+
 
     useEffect(() => {
         const loadCalibration = async () => {
@@ -68,28 +71,6 @@ export default function MeasureScreen({ navigation }: any) {
         }
     };
 
-    /*// Calculate distance between two points in pixels
-    const calculatePixelDistance = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-        return Math.sqrt(dx * dx + dy * dy);
-    };
-
-    // Converts pixel distance to inches
-    const convertPixelsToInches = (pixelDistance: number, distanceFromCamera: number, screenWidth: number) => {
-
-        // Convert 60 degrees to radians for the field of view calculation
-        // Assuming a 60-degree field of view for the camera
-        const fovRadians = (60 * Math.PI) / 180;
-
-        // Calculate the real world width at the distance from the camera
-        const realWorldWidthAtDistance = 2 * distanceFromCamera * Math.tan(fovRadians / 2);
-        const pixelsPerInch = screenWidth / realWorldWidthAtDistance;
-        return pixelDistance / pixelsPerInch;
-    };*/
-
-
-
     return (
         <View style={styles.container}>
 
@@ -97,7 +78,9 @@ export default function MeasureScreen({ navigation }: any) {
             <View style={styles.camera}>
 
                 {/* Live camera feed */}
-                <CameraView key={Date.now()} style={StyleSheet.absoluteFill} facing={facing} />
+                {isFocused && (
+                    <CameraView style={StyleSheet.absoluteFill} facing={facing} />
+                )}
 
                 {/* Transparent overlay to detect tap events */}
                 <TouchableOpacity
@@ -143,39 +126,39 @@ export default function MeasureScreen({ navigation }: any) {
                 )}
             </View>
             {/* Show capture button after 2 points are selected */}
-{points.length === 2 && (
-  <View style={styles.captureButton}>
-    <Button title="Capture Image" onPress={async () => {
-      if (cameraRef.current) {
-        const photo = await cameraRef.current.takePictureAsync();
-        setCapturedUri(photo.uri);
-      }
-    }} />
-  </View>
-)}
+            {points.length === 2 && (
+                <View style={styles.captureButton}>
+                    <Button title="Capture Image" onPress={async () => {
+                        if (cameraRef.current) {
+                            const photo = await cameraRef.current.takePictureAsync();
+                            setCapturedUri(photo.uri);
+                        }
+                    }} />
+                </View>
+            )}
 
-{/* Show save button after capturing */}
-{capturedUri && (
-  <View style={styles.saveButton}>
-    <Button title="Save to Device" onPress={async () => {
-      try {
-        const fileName = `hunt_${Date.now()}.jpg`;
-        const localUri = FileSystem.documentDirectory + fileName;
+            {/* Show save button after capturing */}
+            {capturedUri && (
+                <View style={styles.saveButton}>
+                    <Button title="Save to Device" onPress={async () => {
+                        try {
+                            const fileName = `hunt_${Date.now()}.jpg`;
+                            const localUri = FileSystem.documentDirectory + fileName;
 
-        await FileSystem.moveAsync({
-          from: capturedUri,
-          to: localUri,
-        });
+                            await FileSystem.moveAsync({
+                                from: capturedUri,
+                                to: localUri,
+                            });
 
-        Alert.alert("Saved!", `Saved locally at:\n${localUri}`);
-        setCapturedUri(null);
-      } catch (err) {
-        console.error("Save error:", err);
-        Alert.alert("Failed to save locally.");
-      }
-    }} />
-  </View>
-)}
+                            Alert.alert("Saved!", `Saved locally at:\n${localUri}`);
+                            setCapturedUri(null);
+                        } catch (err) {
+                            console.error("Save error:", err);
+                            Alert.alert("Failed to save locally.");
+                        }
+                    }} />
+                </View>
+            )}
         </View>
     );
 }
@@ -236,10 +219,10 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 10,
         alignSelf: 'center',
-      },
-      saveButton: {
+    },
+    saveButton: {
         position: 'absolute',
         bottom: 80,
         alignSelf: 'center',
-      },
+    },
 });

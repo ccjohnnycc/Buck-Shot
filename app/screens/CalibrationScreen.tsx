@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Button, Alert } f
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import InstructionBanner from '../components/InstructionBanner';
+import { useIsFocused } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -13,6 +14,7 @@ export default function CalibrationScreen({ navigation }: any) {
   const [points, setPoints] = useState<{ x: number, y: number }[]>([]);
   const [hasCalibration, setHasCalibration] = useState(false);
   const knownWidthInches = 3.375;
+  const isFocused = useIsFocused();
 
   useEffect(() => {
     const checkCalibration = async () => {
@@ -78,7 +80,9 @@ export default function CalibrationScreen({ navigation }: any) {
     <View style={styles.container}>
       <InstructionBanner message="Tap both edges of a credit card to calibrate." />
       <View style={styles.camera}>
-        <CameraView style={StyleSheet.absoluteFill} facing={facing} />
+        {isFocused && (
+          <CameraView style={StyleSheet.absoluteFill} facing={facing} />
+        )}
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
