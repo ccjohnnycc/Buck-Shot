@@ -29,7 +29,7 @@ export default function InstructionBanner({ message, autoHideDuration = 5000 }: 
 const styles = StyleSheet.create({
   banner: {
     position: 'absolute',
-    marginTop: 60,
+    marginTop: 150,
     top: 40,
     width: '90%',
     alignSelf: 'center',
