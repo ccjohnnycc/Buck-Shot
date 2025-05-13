@@ -7,6 +7,7 @@ import { calculatePixelDistance, convertPixelsToInches } from '../utils/measurem
 import * as FileSystem from 'expo-file-system';
 import type { CameraView as CameraViewRef } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
+import InstructionBanner from '../components/InstructionBanner';
 
 
 const { width } = Dimensions.get('window');
@@ -16,13 +17,11 @@ export default function MeasureScreen({ navigation }: any) {
     const [permission, requestPermission] = useCameraPermissions();
     // Stores the two user-selected tap points on the camera screen
     const [points, setPoints] = useState<{ x: number, y: number }[]>([]);
+    // Stores the distance from the camera in inches
     const [distanceFromCamera, setDistanceFromCamera] = useState(36);
     const cameraRef = useRef<CameraViewRef | null>(null);
     const [capturedUri, setCapturedUri] = useState<string | null>(null);
-    const [calibration, setCalibration] = useState<{
-        pixelsPerInch: number,
-        calibrationDistance: number
-    } | null>(null);
+    const [calibration, setCalibration] = useState<{ pixelsPerInch: number, calibrationDistance: number } | null>(null);
     const isFocused = useIsFocused();
 
 
@@ -71,15 +70,24 @@ export default function MeasureScreen({ navigation }: any) {
         }
     };
 
+    /* CALCULATING DISTANCE */
+    const handleRecalibrate = async () => {
+        await AsyncStorage.removeItem('calibration');
+        navigation.navigate('Calibration');
+    };
+
     return (
         <View style={styles.container}>
+
+            {/* Instruction banner to guide the user */}
+            <InstructionBanner message="Tap two points to measure." autoHideDuration={6000} />
 
             {/* Container for the camera preview and tap overlay */}
             <View style={styles.camera}>
 
                 {/* Live camera feed */}
                 {isFocused && (
-                    <CameraView style={StyleSheet.absoluteFill} facing={facing} />
+                    <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing} />
                 )}
 
                 {/* Transparent overlay to detect tap events */}
@@ -111,6 +119,7 @@ export default function MeasureScreen({ navigation }: any) {
                         value={distanceFromCamera}
                         onValueChange={setDistanceFromCamera}
                     />
+                    <Button title="Recalibrate" color="#ff4444" onPress={handleRecalibrate} />
                 </View>
                 {points.length === 2 && calibration && (
                     <View style={styles.resultContainer}>
@@ -124,9 +133,7 @@ export default function MeasureScreen({ navigation }: any) {
                         </Text>
                     </View>
                 )}
-            </View>
-            {/* Show capture button after 2 points are selected */}
-            {points.length === 2 && (
+                {/* capture button */}
                 <View style={styles.captureButton}>
                     <Button title="Capture Image" onPress={async () => {
                         if (cameraRef.current) {
@@ -135,30 +142,30 @@ export default function MeasureScreen({ navigation }: any) {
                         }
                     }} />
                 </View>
-            )}
 
-            {/* Show save button after capturing */}
-            {capturedUri && (
-                <View style={styles.saveButton}>
-                    <Button title="Save to Device" onPress={async () => {
-                        try {
-                            const fileName = `hunt_${Date.now()}.jpg`;
-                            const localUri = FileSystem.documentDirectory + fileName;
+                {/* Show save button after capturing */}
+                {capturedUri && (
+                    <View style={styles.saveButton}>
+                        <Button title="Save to Device" onPress={async () => {
+                            try {
+                                const fileName = `hunt_${Date.now()}.jpg`;
+                                const localUri = FileSystem.documentDirectory + fileName;
 
-                            await FileSystem.moveAsync({
-                                from: capturedUri,
-                                to: localUri,
-                            });
+                                await FileSystem.moveAsync({
+                                    from: capturedUri,
+                                    to: localUri,
+                                });
 
-                            Alert.alert("Saved!", `Saved locally at:\n${localUri}`);
-                            setCapturedUri(null);
-                        } catch (err) {
-                            console.error("Save error:", err);
-                            Alert.alert("Failed to save locally.");
-                        }
-                    }} />
-                </View>
-            )}
+                                Alert.alert("Saved!", `Saved locally at:\n${localUri}`);
+                                setCapturedUri(null);
+                            } catch (err) {
+                                console.error("Save error:", err);
+                                Alert.alert("Failed to save locally.");
+                            }
+                        }} />
+                    </View>
+                )}
+            </View>
         </View>
     );
 }
