@@ -17,17 +17,17 @@ const { width } = Dimensions.get('window');
 export default function MeasureScreen({ navigation }: any) {
     const [facing, setFacing] = useState<CameraType>('back');
     const [permission, requestPermission] = useCameraPermissions();
-    // Stores the two user-selected tap points on the camera screen
-    const [points, setPoints] = useState<{ x: number, y: number }[]>([]);
     // Stores the distance from the camera in inches
     const [distanceFromCamera, setDistanceFromCamera] = useState(36);
     const cameraRef = useRef<CameraViewRef | null>(null);
     const [capturedUri, setCapturedUri] = useState<string | null>(null);
     const [calibration, setCalibration] = useState<{ pixelsPerInch: number, calibrationDistance: number } | null>(null);
     const isFocused = useIsFocused();
+    const [marker1, setMarker1] = useState<{ x: number; y: number } | null>(null);
+    const [marker2, setMarker2] = useState<{ x: number; y: number } | null>(null);
 
 
-    useEffect(() => {
+    React.useEffect(() => {
         const loadCalibration = async () => {
             const data = await AsyncStorage.getItem('calibration');
             if (data) {
@@ -58,31 +58,40 @@ export default function MeasureScreen({ navigation }: any) {
         );
     }
 
-    /* SELECTING POINTS */
-    // alled when the user taps on the screen.
-    const handleTap = (event: any) => {
-        const { locationX, locationY } = event.nativeEvent;
-
-        // If already two points selected, start over
-        if (points.length === 2) {
-            setPoints([{ x: locationX, y: locationY }]);
-        } else {
-            // add the new tap to the array
-            setPoints([...points, { x: locationX, y: locationY }]);
-        }
-    };
-
     /* CALCULATING DISTANCE */
     const handleRecalibrate = async () => {
         await AsyncStorage.removeItem('calibration');
         navigation.navigate('Calibration');
     };
 
+    const clearPoints = () => {
+        setMarker1(null);
+        setMarker2(null);
+    };
+
+    const renderMeasurement = () => {
+        if (marker1 && marker2 && calibration) {
+            const pixelDistance = calculatePixelDistance(marker1, marker2);
+            const inches = convertPixelsToInches(
+                pixelDistance,
+                distanceFromCamera,
+                calibration.calibrationDistance,
+                calibration.pixelsPerInch
+            );
+            return (
+                <View style={styles.resultContainer}>
+                    <Text style={styles.resultText}>Measured Distance: {inches.toFixed(2)} inches</Text>
+                </View>
+            );
+        }
+        return null;
+    };
+
     return (
         <View style={styles.container}>
 
             {/* Instruction banner to guide the user */}
-            <InstructionBanner message="Tap two points to measure." autoHideDuration={6000} />
+            <InstructionBanner message="Drag and drop two markers to measure distance." autoHideDuration={6000} />
 
             {/* Container for the camera preview and tap overlay */}
             <View style={styles.camera}>
@@ -104,104 +113,69 @@ export default function MeasureScreen({ navigation }: any) {
                     )
                 )}
 
-
-                {/* Transparent overlay to detect tap events */}
-                <TouchableOpacity
-                    style={StyleSheet.absoluteFill}
-                    activeOpacity={1}
-                    onPress={handleTap}
-                >
-                    {/* Render red markers at each selected point */}
-                    <DraggableCrosshair
-                        initialX={width / 2 - 60}
-                        initialY={200}
-                        onDragEnd={(pos) => {
-                            const newPoints = [...points, pos];
-                            if (newPoints.length > 2) return;
-                            setPoints(newPoints);
-                        }}
-                    />
-                    {points.length >= 1 && (
-                        <DraggableCrosshair
-                            initialX={width / 2 + 60}
-                            initialY={200}
-                            onDragEnd={(pos) => {
-                                const newPoints = [...points];
-                                newPoints[1] = pos;
-                                setPoints(newPoints);
-                            }}
-                        />
-                    )}
-
-                </TouchableOpacity>
-
-                {/* Display the calculated distance in inches if two points are selected */}
-                <View style={styles.sliderContainer}>
-                    <Text style={styles.label}>Distance from Camera: {distanceFromCamera.toFixed(0)} inches</Text>
-                    <Slider
-                        style={{ width: '100%', height: 40 }}
-                        minimumValue={12}
-                        maximumValue={96}
-                        step={1}
-                        value={distanceFromCamera}
-                        onValueChange={setDistanceFromCamera}
-                    />
-                    <Button title="Recalibrate" color="#ff4444" onPress={handleRecalibrate} />
-                </View>
-                {points.length === 2 && calibration && (
-                    <View style={styles.resultContainer}>
-                        <Text style={styles.resultText}>
-                            Measured Distance: {convertPixelsToInches(
-                                calculatePixelDistance(points[0], points[1]),
-                                distanceFromCamera,
-                                calibration.calibrationDistance,
-                                calibration.pixelsPerInch
-                            ).toFixed(2)} inches
-                        </Text>
-                    </View>
+                {marker1 && (
+                    <DraggableCrosshair initialX={marker1.x} initialY={marker1.y} onDragEnd={setMarker1} />
                 )}
-                {/* capture button */}
-                <View style={styles.captureButton}>
-                    <Button title="Capture Image" onPress={async () => {
-                        if (cameraRef.current) {
-                            const photo = await cameraRef.current.takePictureAsync();
-                            setCapturedUri(photo.uri);
-                        }
-                    }} />
-                </View>
+                {marker2 && (
+                    <DraggableCrosshair initialX={marker2.x} initialY={marker2.y} onDragEnd={setMarker2} />
+                )}
 
-                {/* reset buttons */}
-                <TouchableOpacity
-                    style={styles.restartButton}
-                    onPress={() => setPoints([])}
-                >
+                {!marker1 && (
+                    <DraggableCrosshair initialX={width / 2 - 60} initialY={300} onDragEnd={setMarker1} />
+                )}
+                {!marker2 && marker1 && (
+                    <DraggableCrosshair initialX={width / 2 + 60} initialY={300} onDragEnd={setMarker2} />
+                )}
+
+                {/* Restart button */}
+                <TouchableOpacity style={styles.restartButton} onPress={clearPoints}>
                     <Text style={styles.restartText}>Restart </Text>
                 </TouchableOpacity>
+            </View>
+
+            {/* Display the calculated distance in inches if two points are selected */}
+            <View style={styles.sliderContainer}>
+                <Text style={styles.label}>Distance from Camera: {distanceFromCamera.toFixed(0)} inches</Text>
+                <Slider
+                    style={{ width: '100%', height: 40 }}
+                    minimumValue={12}
+                    maximumValue={96}
+                    step={1}
+                    value={distanceFromCamera}
+                    onValueChange={setDistanceFromCamera}
+                />
+                <Button title="Recalibrate" color="#ff4444" onPress={handleRecalibrate} />
+
+                {/* capture button */}
+                <Button title="Capture Image" onPress={async () => {
+                    if (cameraRef.current) {
+                        const photo = await cameraRef.current.takePictureAsync();
+                        setCapturedUri(photo.uri);
+                    }
+                }} />
 
                 {/* Show save button after capturing */}
                 {capturedUri && (
-                    <View style={styles.saveButton}>
-                        <Button title="Save to Device" onPress={async () => {
-                            try {
-                                const fileName = `hunt_${Date.now()}.jpg`;
-                                const localUri = FileSystem.documentDirectory + fileName;
+                    <Button title="Save to Device" onPress={async () => {
+                        try {
+                            const fileName = `hunt_${Date.now()}.jpg`;
+                            const localUri = FileSystem.documentDirectory + fileName;
 
-                                await FileSystem.moveAsync({
-                                    from: capturedUri,
-                                    to: localUri,
-                                });
-                                setCapturedUri(null);
-
-                                Alert.alert("Saved!", `Saved locally at:\n${localUri}`);
-                                setCapturedUri(null);
-                            } catch (err) {
-                                console.error("Save error:", err);
-                                Alert.alert("Failed to save locally.");
-                            }
-                        }} />
-                    </View>
+                            await FileSystem.moveAsync({
+                                from: capturedUri,
+                                to: localUri,
+                            });
+                            Alert.alert("Saved!", `Saved locally at:\n${localUri}`);
+                            setCapturedUri(null);
+                        } catch (err) {
+                            console.error("Save error:", err);
+                            Alert.alert("Failed to save locally.");
+                        }
+                    }} />
                 )}
             </View>
+
+            {renderMeasurement()}
         </View>
     );
 }
@@ -226,15 +200,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         margin: 10,
     },
-    point: {
-        position: 'absolute',
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: 'red',
-        borderWidth: 2,
-        borderColor: 'white',
-    },
     sliderContainer: {
         position: 'absolute',
         bottom: 100,
@@ -258,16 +223,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 16,
     },
-    captureButton: {
-        position: 'absolute',
-        bottom: 10,
-        alignSelf: 'center',
-    },
-    saveButton: {
-        position: 'absolute',
-        bottom: 80,
-        alignSelf: 'center',
-    },
     restartButton: {
         position: 'absolute',
         marginTop: 60,
@@ -278,7 +233,6 @@ const styles = StyleSheet.create({
         borderRadius: 5,
     },
     restartText: {
-        fontSize: 16,
         color: '#000',
         textAlign: 'center',
     },
