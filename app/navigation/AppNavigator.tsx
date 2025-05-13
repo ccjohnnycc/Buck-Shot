@@ -45,7 +45,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="Calibration" component={CalibrationScreen} />
         <Stack.Screen name="Gallery" component={GalleryScreen} />
-        <Stack.Screen name="HuntDetail" component={HuntDetailScreen} />
+       <Stack.Screen name="HuntDetail" component={HuntDetailScreen} options={{ title: 'Hunt Details' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

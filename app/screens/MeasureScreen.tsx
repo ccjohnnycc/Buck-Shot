@@ -25,6 +25,7 @@ export default function MeasureScreen({ navigation }: any) {
     const isFocused = useIsFocused();
     const [marker1, setMarker1] = useState<{ x: number; y: number } | null>(null);
     const [marker2, setMarker2] = useState<{ x: number; y: number } | null>(null);
+    const [activeFolder, setActiveFolder] = useState<string | null>(null);
 
 
     React.useEffect(() => {
@@ -153,23 +154,51 @@ export default function MeasureScreen({ navigation }: any) {
                         setCapturedUri(photo.uri);
                     }
                 }} />
+            {activeFolder && !capturedUri && (
+                <Button title="End Hunt Session" color="#ff4444" onPress={() => { setActiveFolder(null);
+                Alert.alert("Hunt ended", "Next photo will start a new folder.");
+            }}
+            />
+            )}
 
                 {/* Show save button after capturing */}
                 {capturedUri && (
-                    <Button title="Save to Device" onPress={async () => {
+                    <Button title="Save to Hunt Folder" onPress={async () => {
                         try {
-                            const fileName = `hunt_${Date.now()}.jpg`;
-                            const localUri = FileSystem.documentDirectory + fileName;
+                            // Step 1: Create or reuse active folder
+                            let folder = activeFolder;
+                            if (!folder) {
+                                folder = `hunt_${Date.now()}`;
+                                const folderUri = FileSystem.documentDirectory + folder + '/';
+                                await FileSystem.makeDirectoryAsync(folderUri, { intermediates: true });
+
+                                // Save default metadata
+                                await FileSystem.writeAsStringAsync(folderUri + 'metadata.json', JSON.stringify({
+                                    title: "Untitled Hunt"
+                                }));
+
+                                setActiveFolder(folder);
+                            }
+
+                            // Step 2: Save image to folder
+                            const folderUri = FileSystem.documentDirectory + folder + '/';
+                            const files = await FileSystem.readDirectoryAsync(folderUri);
+                            const nextIndex = files.length + 1;
+                            const fileName = `${nextIndex}.jpg`;
+                            const newUri = folderUri + fileName;
 
                             await FileSystem.moveAsync({
-                                from: capturedUri,
-                                to: localUri,
+                                from: capturedUri!,
+                                to: newUri,
                             });
-                            Alert.alert("Saved!", `Saved locally at:\n${localUri}`);
+
+                            Alert.alert("Photo Saved", `Saved to: ${folder}`);
                             setCapturedUri(null);
+                            setMarker1(null);
+                            setMarker2(null);
                         } catch (err) {
                             console.error("Save error:", err);
-                            Alert.alert("Failed to save locally.");
+                            Alert.alert("Failed to save photo");
                         }
                     }} />
                 )}

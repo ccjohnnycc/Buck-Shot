@@ -1,13 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { View, Image, ScrollView, StyleSheet, Dimensions, Text, ImageBackground } from 'react-native';
+import { View, Image, ScrollView, StyleSheet, Dimensions, Text, ImageBackground, Alert, Button } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { useRoute } from '@react-navigation/native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function HuntDetailScreen() {
   const { folderName } = useRoute().params as { folderName: string };
   const [photos, setPhotos] = useState<string[]>([]);
+  const handleDeletePhoto = async (uriToDelete: string) => {
+    try {
+      await FileSystem.deleteAsync(uriToDelete, { idempotent: true });
+      setPhotos(prev => prev.filter(uri => uri !== uriToDelete));
+      Alert.alert('Deleted', 'Photo removed.');
+    } catch (err) {
+      console.error('Delete failed:', err);
+      Alert.alert('Delete failed');
+    }
+  };
 
   useEffect(() => {
     const loadPhotos = async () => {
@@ -27,14 +38,27 @@ export default function HuntDetailScreen() {
       <View style={styles.overlay} />
 
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Hunt Details</Text>
+
         {photos.map((uri, index) => (
-          <Image key={index} source={{ uri }} style={styles.image} />
+          <Swipeable
+            key={index}
+            renderRightActions={() => renderRightActions(() => handleDeletePhoto(uri))}
+          >
+            <View style={styles.photoCard}>
+              <Image source={{ uri }} style={styles.image} />
+            </View>
+          </Swipeable>
         ))}
       </ScrollView>
     </ImageBackground>
   );
 }
+
+const renderRightActions = (onDelete: () => void) => (
+  <View style={styles.swipeDelete}>
+    <Button title="Delete" color="#ff4444" onPress={onDelete} />
+  </View>
+);
 
 const styles = StyleSheet.create({
   background: {
@@ -60,4 +84,18 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 15,
   },
+  photoCard: {
+    marginBottom: 20,
+    alignItems: 'center',
+    backgroundColor: '#333',
+    padding: 10,
+    borderRadius: 10,
+  },
+  swipeDelete: {
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    backgroundColor: '#000',
+    paddingRight: 20,
+    flex: 1,
+  }
 });
