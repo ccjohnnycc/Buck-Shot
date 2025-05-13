@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Button, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Button, Alert, Image } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import Slider from '@react-native-community/slider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,6 +8,8 @@ import * as FileSystem from 'expo-file-system';
 import type { CameraView as CameraViewRef } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
 import InstructionBanner from '../components/InstructionBanner';
+import DraggableCrosshair from '../components/DraggableCrosshair';
+
 
 
 const { width } = Dimensions.get('window');
@@ -86,9 +88,22 @@ export default function MeasureScreen({ navigation }: any) {
             <View style={styles.camera}>
 
                 {/* Live camera feed */}
-                {isFocused && (
-                    <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing} />
+                {capturedUri ? (
+                    <Image
+                        source={{ uri: capturedUri }}
+                        style={StyleSheet.absoluteFill}
+                        resizeMode="cover"
+                    />
+                ) : (
+                    isFocused && (
+                        <CameraView
+                            ref={cameraRef}
+                            style={StyleSheet.absoluteFill}
+                            facing={facing}
+                        />
+                    )
                 )}
+
 
                 {/* Transparent overlay to detect tap events */}
                 <TouchableOpacity
@@ -97,15 +112,27 @@ export default function MeasureScreen({ navigation }: any) {
                     onPress={handleTap}
                 >
                     {/* Render red markers at each selected point */}
-                    {points.map((p, i) => (
-                        <View
-                            key={i}
-                            style={[
-                                styles.point,
-                                { left: p.x - 10, top: p.y - 10 }
-                            ]}
+                    <DraggableCrosshair
+                        initialX={width / 2 - 60}
+                        initialY={200}
+                        onDragEnd={(pos) => {
+                            const newPoints = [...points, pos];
+                            if (newPoints.length > 2) return;
+                            setPoints(newPoints);
+                        }}
+                    />
+                    {points.length >= 1 && (
+                        <DraggableCrosshair
+                            initialX={width / 2 + 60}
+                            initialY={200}
+                            onDragEnd={(pos) => {
+                                const newPoints = [...points];
+                                newPoints[1] = pos;
+                                setPoints(newPoints);
+                            }}
                         />
-                    ))}
+                    )}
+
                 </TouchableOpacity>
 
                 {/* Display the calculated distance in inches if two points are selected */}
@@ -143,6 +170,14 @@ export default function MeasureScreen({ navigation }: any) {
                     }} />
                 </View>
 
+                {/* reset buttons */}
+                <TouchableOpacity
+                    style={styles.restartButton}
+                    onPress={() => setPoints([])}
+                >
+                    <Text style={styles.restartText}>Restart </Text>
+                </TouchableOpacity>
+
                 {/* Show save button after capturing */}
                 {capturedUri && (
                     <View style={styles.saveButton}>
@@ -155,6 +190,7 @@ export default function MeasureScreen({ navigation }: any) {
                                     from: capturedUri,
                                     to: localUri,
                                 });
+                                setCapturedUri(null);
 
                                 Alert.alert("Saved!", `Saved locally at:\n${localUri}`);
                                 setCapturedUri(null);
@@ -231,5 +267,19 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 80,
         alignSelf: 'center',
+    },
+    restartButton: {
+        position: 'absolute',
+        marginTop: 60,
+        top: 20,
+        right: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+        padding: 10,
+        borderRadius: 5,
+    },
+    restartText: {
+        fontSize: 16,
+        color: '#000',
+        textAlign: 'center',
     },
 });
