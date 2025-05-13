@@ -1,19 +1,23 @@
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Button, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Button, Alert, Image } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import InstructionBanner from '../components/InstructionBanner';
 import { useIsFocused } from '@react-navigation/native';
+import DraggableCrosshair from '../components/DraggableCrosshair';
+
 
 const { width } = Dimensions.get('window');
 
 export default function CalibrationScreen({ navigation }: any) {
   const [facing, setFacing] = useState<CameraType>('back');
+  const cameraRef = useRef<CameraView | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [points, setPoints] = useState<{ x: number, y: number }[]>([]);
   const [hasCalibration, setHasCalibration] = useState(false);
   const knownWidthInches = 3.375;
+  const [capturedUri, setCapturedUri] = useState<string | null>(null);
   const isFocused = useIsFocused();
 
   useEffect(() => {
@@ -80,24 +84,60 @@ export default function CalibrationScreen({ navigation }: any) {
     <View style={styles.container}>
       <InstructionBanner message="Tap both edges of a credit card to calibrate." />
       <View style={styles.camera}>
-        {isFocused && (
-          <CameraView style={StyleSheet.absoluteFill} facing={facing} />
+        {capturedUri ? (
+          <Image
+            source={{ uri: capturedUri }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+        ) : (
+          isFocused && (
+            <CameraView
+              ref={cameraRef}
+              style={StyleSheet.absoluteFill}
+              facing={facing}
+            />
+          )
         )}
+
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
           onPress={handleTap}
         >
-          {points.map((p, i) => (
-            <View
-              key={i}
-              style={[styles.point, { left: p.x - 10, top: p.y - 10 }]}
+          <DraggableCrosshair
+            initialX={width / 2 - 60}
+            initialY={200}
+            onDragEnd={(pos) => {
+              const newPoints = [...points, pos];
+              if (newPoints.length > 2) return;
+              setPoints(newPoints);
+            }}
+          />
+          {points.length >= 1 && (
+            <DraggableCrosshair
+              initialX={width / 2 + 60}
+              initialY={200}
+              onDragEnd={(pos) => {
+                const newPoints = [...points];
+                newPoints[1] = pos;
+                setPoints(newPoints);
+              }}
             />
-          ))}
+          )}
         </TouchableOpacity>
 
+        {/* reset buttons */}
+        <TouchableOpacity
+          style={styles.restartButton}
+          onPress={() => setPoints([])}
+        >
+          <Text style={styles.restartText}>Restart </Text>
+        </TouchableOpacity>
+
+
         <View style={styles.bottom}>
-          <Text style={styles.label}>Tap both ends of a credit card on screen</Text>
+          <Text style={styles.label}>Tap both ends of a credit card on screen </Text>
           <Button title="Save Calibration" onPress={saveCalibration} />
           {hasCalibration && (
             <View style={{ marginTop: 10 }}>
@@ -139,5 +179,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
     padding: 15,
     borderRadius: 10,
-  }
+  },
+  restartButton: {
+    position: 'absolute',
+    marginTop: 60,
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    padding: 10,
+    borderRadius: 5,
+  },
+  restartText: {
+    fontSize: 16,
+    color: '#000',
+    textAlign: 'center',
+  },
 });
