@@ -95,16 +95,16 @@ export default function CalibrationScreen({ navigation }: any) {
             />
           ))}
         </TouchableOpacity>
-      </View>
 
-      <View style={styles.bottom}>
-        <Text style={styles.label}>Tap both ends of a credit card on screen</Text>
-        <Button title="Save Calibration" onPress={saveCalibration} />
-        {hasCalibration && (
-          <View style={{ marginTop: 10 }}>
-            <Button title="Reset Calibration" color="#ff4444" onPress={handleResetCalibration} />
-          </View>
-        )}
+        <View style={styles.bottom}>
+          <Text style={styles.label}>Tap both ends of a credit card on screen</Text>
+          <Button title="Save Calibration" onPress={saveCalibration} />
+          {hasCalibration && (
+            <View style={{ marginTop: 10 }}>
+              <Button title="Reset Calibration" color="#ff4444" onPress={handleResetCalibration} />
+            </View>
+          )}
+        </View>
       </View>
     </View>
   );
