@@ -8,6 +8,7 @@ import AuthScreen from '../screens/AuthScreen';
 import SignupScreen from '../screens/SignupScreen';
 import CalibrationScreen from '../screens/CalibrationScreen';
 import GalleryScreen from '../screens/GalleryScreen';
+import HuntDetailScreen from '../screens/HuntDetailScreen';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -18,6 +19,7 @@ export type RootStackParamList = {
   AuthLanding: undefined;
   Calibration: undefined;
   Gallery: undefined;
+  HuntDetail: { folderName: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -43,6 +45,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="Calibration" component={CalibrationScreen} />
         <Stack.Screen name="Gallery" component={GalleryScreen} />
+        <Stack.Screen name="HuntDetail" component={HuntDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
