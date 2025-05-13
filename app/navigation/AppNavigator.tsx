@@ -7,6 +7,7 @@ import LoginScreen from '../screens/LoginScreen';
 import AuthScreen from '../screens/AuthScreen';
 import SignupScreen from '../screens/SignupScreen';
 import GalleryScreen from '../screens/GalleryScreen';
+import HuntDetailScreen from '../screens/HuntDetailScreen';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -16,6 +17,7 @@ export type RootStackParamList = {
   Signup: undefined;
   AuthLanding: undefined;
   Gallery: undefined;
+  HuntDetail: { folderName: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -40,6 +42,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="Gallery" component={GalleryScreen} />
+        <Stack.Screen name="HuntDetail" component={HuntDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
