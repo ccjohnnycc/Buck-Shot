@@ -14,12 +14,15 @@ export default function CalibrationScreen({ navigation }: any) {
   const [facing, setFacing] = useState<CameraType>('back');
   const cameraRef = useRef<CameraView | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
-  const [points, setPoints] = useState<{ x: number, y: number }[]>([]);
   const [hasCalibration, setHasCalibration] = useState(false);
   const knownWidthInches = 3.375;
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
   const isFocused = useIsFocused();
 
+  const [marker1, setMarker1] = useState<{ x: number, y: number } | null>(null);
+  const [marker2, setMarker2] = useState<{ x: number, y: number } | null>(null);
+
+  // Check if calibration already exists in AsyncStorage
   useEffect(() => {
     const checkCalibration = async () => {
       const data = await AsyncStorage.getItem('calibration');
@@ -39,28 +42,21 @@ export default function CalibrationScreen({ navigation }: any) {
     );
   }
 
-  const handleTap = (event: any) => {
-    const { locationX, locationY } = event.nativeEvent;
-    if (points.length === 2) {
-      setPoints([{ x: locationX, y: locationY }]);
-    } else {
-      setPoints([...points, { x: locationX, y: locationY }]);
-    }
-  };
-
+  // Calculate distance between two marker points in pixels
   const calculatePixelDistance = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
     return Math.sqrt(dx * dx + dy * dy);
   };
 
+  // Save the current calibration settings to AsyncStorage
   const saveCalibration = async () => {
-    if (points.length !== 2) {
-      Alert.alert("Calibration Incomplete", "Please tap both ends of the known object.");
+    if (!marker1 || !marker2) {
+      Alert.alert("Calibration Incomplete", "Please drag both markers to the ends of your credit card.");
       return;
     }
 
-    const pixelDistance = calculatePixelDistance(points[0], points[1]);
+    const pixelDistance = calculatePixelDistance(marker1, marker2);
     const pixelsPerInch = pixelDistance / knownWidthInches;
     const calibrationDistance = 36;
 
@@ -73,17 +69,24 @@ export default function CalibrationScreen({ navigation }: any) {
     navigation.navigate('Measure');
   };
 
+  // Reset all calibration data
   const handleResetCalibration = async () => {
     await AsyncStorage.removeItem('calibration');
-    Alert.alert("Calibration Reset", "Calibration data has been cleared.");
     setHasCalibration(false);
-    setPoints([]);
+    setMarker1(null);
+    setMarker2(null);
+    setCapturedUri(null);
+    Alert.alert("Calibration Reset", "Calibration data has been cleared.");
   };
 
   return (
     <View style={styles.container}>
-      <InstructionBanner message="Tap both edges of a credit card to calibrate." />
+
+      {/* Banner with instructions */}
+      <InstructionBanner message="Drag both crosshairs to the ends of a credit card to calibrate." />
       <View style={styles.camera}>
+
+        {/* Either show captured image or live camera */}
         {capturedUri ? (
           <Image
             source={{ uri: capturedUri }}
@@ -100,50 +103,72 @@ export default function CalibrationScreen({ navigation }: any) {
           )
         )}
 
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={handleTap}
-        >
+        {/* Render draggable crosshairs for marker1 and marker2 */}
+        {marker1 && (
+          <DraggableCrosshair
+            initialX={marker1.x}
+            initialY={marker1.y}
+            onDragEnd={setMarker1}
+          />
+        )}
+        {marker2 && (
+          <DraggableCrosshair
+            initialX={marker2.x}
+            initialY={marker2.y}
+            onDragEnd={setMarker2}
+          />
+        )}
+        {!marker1 && (
           <DraggableCrosshair
             initialX={width / 2 - 60}
             initialY={200}
-            onDragEnd={(pos) => {
-              const newPoints = [...points, pos];
-              if (newPoints.length > 2) return;
-              setPoints(newPoints);
-            }}
+            onDragEnd={setMarker1}
           />
-          {points.length >= 1 && (
-            <DraggableCrosshair
-              initialX={width / 2 + 60}
-              initialY={200}
-              onDragEnd={(pos) => {
-                const newPoints = [...points];
-                newPoints[1] = pos;
-                setPoints(newPoints);
-              }}
-            />
+        )}
+        {!marker2 && marker1 && (
+          <DraggableCrosshair
+            initialX={width / 2 + 60}
+            initialY={200}
+            onDragEnd={setMarker2}
+          />
+        )}
+
+        {/* Controls: only show "Capture" if live view */}
+        <View style={styles.buttonOverlay}>
+          {!capturedUri && (
+            <View style={styles.buttonSpacing}>
+              <Button title="Capture Image" onPress={async () => {
+                if (cameraRef.current) {
+                  const photo = await cameraRef.current.takePictureAsync();
+                  setCapturedUri(photo.uri);
+                }
+              }} />
+            </View>
           )}
-        </TouchableOpacity>
 
-        {/* reset buttons */}
-        <TouchableOpacity
-          style={styles.restartButton}
-          onPress={() => setPoints([])}
-        >
-          <Text style={styles.restartText}>Restart </Text>
-        </TouchableOpacity>
+          {capturedUri && (
+            <View style={styles.buttonSpacing}>
+              <Button title="Live Camera" onPress={() => setCapturedUri(null)} />
+            </View>
+          )}
 
+          <View style={styles.buttonSpacing}>
+            <Button title="Save Calibration" onPress={saveCalibration} />
+          </View>
 
-        <View style={styles.bottom}>
-          <Text style={styles.label}>Tap both ends of a credit card on screen </Text>
-          <Button title="Save Calibration" onPress={saveCalibration} />
           {hasCalibration && (
-            <View style={{ marginTop: 10 }}>
+            <View style={styles.buttonSpacing}>
               <Button title="Reset Calibration" color="#ff4444" onPress={handleResetCalibration} />
             </View>
           )}
+        </View>
+
+        {/* Restart individual markers */}
+        <View style={styles.restartButton}>
+          <Button title="Restart" onPress={() => {
+            setMarker1(null);
+            setMarker2(null);
+          }} />
         </View>
       </View>
     </View>
@@ -156,41 +181,30 @@ const styles = StyleSheet.create({
   center: {
     flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000',
   },
-  point: {
-    position: 'absolute',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'lime',
-    borderWidth: 2,
-    borderColor: 'white',
-  },
   label: {
     color: 'white',
     textAlign: 'center',
     fontSize: 16,
     marginBottom: 10,
   },
-  bottom: {
+  buttonOverlay: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 25,
     width: '90%',
     alignSelf: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
     padding: 15,
     borderRadius: 10,
   },
+  buttonSpacing: {
+    marginBottom: 10,
+  },
   restartButton: {
     position: 'absolute',
     marginTop: 60,
     right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     padding: 10,
     borderRadius: 5,
-  },
-  restartText: {
-    fontSize: 16,
-    color: '#000',
-    textAlign: 'center',
   },
 });
