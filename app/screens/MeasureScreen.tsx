@@ -173,6 +173,17 @@ export default function MeasureScreen({ navigation }: any) {
                         }
                     }} />
                 )}
+
+                {/* Back to live view button */}
+                {capturedUri && (
+                    <Button
+                        title="Return to Live Camera"
+                        onPress={() => {
+                            setCapturedUri(null);
+                            clearPoints(); // optional: reset markers too
+                        }}
+                    />
+                )}
             </View>
 
             {renderMeasurement()}
