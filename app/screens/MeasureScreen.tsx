@@ -68,25 +68,7 @@ export default function MeasureScreen({ navigation }: any) {
         setMarker1(null);
         setMarker2(null);
     };
-
-    const renderMeasurement = () => {
-        if (marker1 && marker2 && calibration) {
-            const pixelDistance = calculatePixelDistance(marker1, marker2);
-            const inches = convertPixelsToInches(
-                pixelDistance,
-                distanceFromCamera,
-                calibration.calibrationDistance,
-                calibration.pixelsPerInch
-            );
-            return (
-                <View style={styles.resultContainer}>
-                    <Text style={styles.resultText}>Measured Distance: {inches.toFixed(2)} inches</Text>
-                </View>
-            );
-        }
-        return null;
-    };
-
+    
     return (
         <View style={styles.container}>
 
@@ -135,6 +117,19 @@ export default function MeasureScreen({ navigation }: any) {
 
             {/* Display the calculated distance in inches if two points are selected */}
             <View style={styles.sliderContainer}>
+
+                {/* Show measured distance at the top */}
+                {marker1 && marker2 && calibration && (
+                    <Text style={styles.resultText}>
+                        Distance: {convertPixelsToInches(
+                            calculatePixelDistance(marker1, marker2),
+                            distanceFromCamera,
+                            calibration.calibrationDistance,
+                            calibration.pixelsPerInch
+                        ).toFixed(2)} inches
+                    </Text>
+                )}
+
                 <Text style={styles.label}>Distance from Camera: {distanceFromCamera.toFixed(0)} inches</Text>
                 <Slider
                     style={{ width: '100%', height: 40 }}
@@ -144,49 +139,57 @@ export default function MeasureScreen({ navigation }: any) {
                     value={distanceFromCamera}
                     onValueChange={setDistanceFromCamera}
                 />
-                <Button title="Recalibrate" color="#ff4444" onPress={handleRecalibrate} />
 
                 {/* capture button */}
-                <Button title="Capture Image" onPress={async () => {
-                    if (cameraRef.current) {
-                        const photo = await cameraRef.current.takePictureAsync();
-                        setCapturedUri(photo.uri);
-                    }
-                }} />
+                {!capturedUri && (
+                    <View style={styles.buttonSpacing}>
+                        <Button title="Capture Image" onPress={async () => {
+                            if (cameraRef.current) {
+                                const photo = await cameraRef.current.takePictureAsync();
+                                setCapturedUri(photo.uri);
+                            }
+                        }} />
+                    </View>
+                )}
 
                 {/* Show save button after capturing */}
                 {capturedUri && (
-                    <Button title="Save to Device" onPress={async () => {
-                        try {
-                            const fileName = `hunt_${Date.now()}.jpg`;
-                            const localUri = FileSystem.documentDirectory + fileName;
+                    <View style={styles.buttonSpacing}>
+                        <Button title="Save to Device" onPress={async () => {
+                            try {
+                                const fileName = `hunt_${Date.now()}.jpg`;
+                                const localUri = FileSystem.documentDirectory + fileName;
 
-                            await FileSystem.moveAsync({
-                                from: capturedUri,
-                                to: localUri,
-                            });
-                            Alert.alert("Saved!", `Saved locally at:\n${localUri}`);
-                            setCapturedUri(null);
-                        } catch (err) {
-                            console.error("Save error:", err);
-                            Alert.alert("Failed to save locally.");
-                        }
-                    }} />
+                                await FileSystem.moveAsync({
+                                    from: capturedUri,
+                                    to: localUri,
+                                });
+                                Alert.alert("Saved!", `Saved locally at:\n${localUri}`);
+                                setCapturedUri(null);
+                            } catch (err) {
+                                console.error("Save error:", err);
+                                Alert.alert("Failed to save locally.");
+                            }
+                        }} />
+                    </View>
                 )}
 
                 {/* Back to live view button */}
                 {capturedUri && (
-                    <Button
-                        title="Return to Live Camera"
-                        onPress={() => {
+                    <View style={styles.buttonSpacing}>
+                        <Button title="Return to Live Camera" onPress={() => {
                             setCapturedUri(null);
-                            clearPoints(); // optional: reset markers too
-                        }}
-                    />
+                            clearPoints();
+                        }} />
+                    </View>
                 )}
+
+                {/* Recalibrate */}
+                <View style={styles.buttonSpacing}>
+                    <Button title="Recalibrate" color="#ff4444" onPress={handleRecalibrate} />
+                </View>
             </View>
 
-            {renderMeasurement()}
         </View>
     );
 }
@@ -213,16 +216,7 @@ const styles = StyleSheet.create({
     },
     sliderContainer: {
         position: 'absolute',
-        bottom: 100,
-        width: '90%',
-        alignSelf: 'center',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        padding: 10,
-        borderRadius: 10,
-    },
-    resultContainer: {
-        position: 'absolute',
-        bottom: 50,
+        bottom: 20,
         width: '90%',
         alignSelf: 'center',
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -237,14 +231,16 @@ const styles = StyleSheet.create({
     restartButton: {
         position: 'absolute',
         marginTop: 60,
-        top: 20,
         right: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+        backgroundColor: 'rgba(0,0,0,0.6)',
         padding: 10,
         borderRadius: 5,
     },
     restartText: {
-        color: '#000',
+        color: '#fff',
         textAlign: 'center',
+    },
+    buttonSpacing: {
+        marginBottom: 10,
     },
 });
