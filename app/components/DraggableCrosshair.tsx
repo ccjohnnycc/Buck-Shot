@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { View, StyleSheet, PanResponder, Animated, LayoutChangeEvent } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, StyleSheet, PanResponder, Animated } from 'react-native';
 
 interface DraggableCrosshairProps {
   initialX?: number;
@@ -12,42 +12,47 @@ export default function DraggableCrosshair({
   initialY = 100,
   onDragEnd,
 }: DraggableCrosshairProps) {
-  const pan = useRef(new Animated.ValueXY({ x: initialX, y: initialY })).current;
-  const [layout, setLayout] = useState({ width: 0, height: 0 });
-  const [lastPosition, setLastPosition] = useState({ x: initialX, y: initialY });
+  const translate = useRef(new Animated.ValueXY()).current;
+  const lastOffset = useRef({ x: initialX, y: initialY });
+
+  useEffect(() => {
+    translate.setValue({ x: 0, y: 0 });
+    translate.setOffset({ x: initialX, y: initialY });
+    lastOffset.current = { x: initialX, y: initialY };
+  }, [initialX, initialY]);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        pan.setOffset({ x: lastPosition.x, y: lastPosition.y });
+        translate.setValue({ x: 0, y: 0 });
       },
       onPanResponderMove: Animated.event(
-        [null, { dx: pan.x, dy: pan.y }],
+        [null, { dx: translate.x, dy: translate.y }],
         { useNativeDriver: false }
       ),
-      onPanResponderRelease: () => {
-        pan.flattenOffset();
-        pan.stopAnimation((value) => {
-          setLastPosition(value);
-          onDragEnd?.(value);
-        });
+      onPanResponderRelease: (_, gestureState) => {
+        const newX = lastOffset.current.x + gestureState.dx;
+        const newY = lastOffset.current.y + gestureState.dy;
+
+        lastOffset.current = { x: newX, y: newY };
+        translate.flattenOffset();
+        translate.setOffset(lastOffset.current);
+        translate.setValue({ x: 0, y: 0 });
+
+        console.log('final drag:', lastOffset.current);
+        onDragEnd?.(lastOffset.current);
       },
     })
   ).current;
 
-  const handleLayout = (event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout;
-    setLayout({ width, height });
-  };
-
   return (
     <Animated.View
       {...panResponder.panHandlers}
-      style={[styles.crosshair, {
-        transform: pan.getTranslateTransform(),
-      }]}
-      onLayout={handleLayout}
+      style={[
+        styles.crosshair,
+        { transform: translate.getTranslateTransform() },
+      ]}
     >
       <View style={styles.circle}>
         <View style={styles.vertical} />
@@ -75,22 +80,21 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'white',
     backgroundColor: 'transparent',
-    position: 'relative',
   },
   vertical: {
     position: 'absolute',
-    width: LINE_WIDTH,
-    height: SIZE,
+    width: 2,
+    height: '100%',
     backgroundColor: 'white',
-    left: SIZE / 2 - LINE_WIDTH / 2,
-    top: 0,
+    left: '50%',
+    marginLeft: -1,
   },
   horizontal: {
     position: 'absolute',
-    height: LINE_WIDTH,
-    width: SIZE,
+    height: 2,
+    width: '100%',
     backgroundColor: 'white',
-    top: SIZE / 2 - LINE_WIDTH / 2,
-    left: 0,
+    top: '50%',
+    marginTop: -1,
   },
 });
