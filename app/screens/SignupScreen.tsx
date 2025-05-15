@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { db } from '../services/firebaseConfig';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type SignupNavProp = NativeStackNavigationProp<RootStackParamList, 'Signup'>;
 
@@ -36,7 +37,7 @@ export default function SignupScreen() {
         password, 
         createdAt: new Date().toISOString()
       });
-
+      await AsyncStorage.setItem('userEmail', email);
       navigation.navigate('Home');
     } catch (err: any) {
       Alert.alert('Signup failed', err.message);

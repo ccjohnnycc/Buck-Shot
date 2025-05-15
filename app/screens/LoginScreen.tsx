@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { db } from '../services/firebaseConfig';
 import { collection, getDocs, query, where } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 type LoginNavProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -29,7 +30,7 @@ export default function LoginScreen() {
         Alert.alert('Invalid email or password');
         return;
       }
-
+      await AsyncStorage.setItem('userEmail', email);
       navigation.navigate('Home');
     } catch (err: any) {
       Alert.alert('Login failed', err.message);

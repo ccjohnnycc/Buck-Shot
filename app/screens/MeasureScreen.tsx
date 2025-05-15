@@ -25,6 +25,7 @@ export default function MeasureScreen({ navigation }: any) {
     const isFocused = useIsFocused();
     const [marker1, setMarker1] = useState<{ x: number; y: number } | null>(null);
     const [marker2, setMarker2] = useState<{ x: number; y: number } | null>(null);
+    const [activeFolder, setActiveFolder] = useState<string | null>(null);
 
 
     React.useEffect(() => {
@@ -141,37 +142,59 @@ export default function MeasureScreen({ navigation }: any) {
                 />
 
                 {/* capture button */}
-                {!capturedUri && (
-                    <View style={styles.buttonSpacing}>
-                        <Button title="Capture Image" onPress={async () => {
-                            if (cameraRef.current) {
-                                const photo = await cameraRef.current.takePictureAsync();
-                                setCapturedUri(photo.uri);
-                            }
-                        }} />
-                    </View>
-                )}
+                <Button title="Capture Image" onPress={async () => {
+                    if (cameraRef.current) {
+                        const photo = await cameraRef.current.takePictureAsync();
+                        setCapturedUri(photo.uri);
+                    }
+                }} />
+            {activeFolder && !capturedUri && (
+                <Button title="End Hunt Session" color="#ff4444" onPress={() => { setActiveFolder(null);
+                Alert.alert("Hunt ended", "Next photo will start a new folder.");
+            }}
+            />
+            )}
 
                 {/* Show save button after capturing */}
                 {capturedUri && (
-                    <View style={styles.buttonSpacing}>
-                        <Button title="Save to Device" onPress={async () => {
-                            try {
-                                const fileName = `hunt_${Date.now()}.jpg`;
-                                const localUri = FileSystem.documentDirectory + fileName;
+                    <Button title="Save to Hunt Folder" onPress={async () => {
+                        try {
+                            // Step 1: Create or reuse active folder
+                            let folder = activeFolder;
+                            if (!folder) {
+                                folder = `hunt_${Date.now()}`;
+                                const folderUri = FileSystem.documentDirectory + folder + '/';
+                                await FileSystem.makeDirectoryAsync(folderUri, { intermediates: true });
 
-                                await FileSystem.moveAsync({
-                                    from: capturedUri,
-                                    to: localUri,
-                                });
-                                Alert.alert("Saved!", `Saved locally at:\n${localUri}`);
-                                setCapturedUri(null);
-                            } catch (err) {
-                                console.error("Save error:", err);
-                                Alert.alert("Failed to save locally.");
+                                // Save default metadata
+                                await FileSystem.writeAsStringAsync(folderUri + 'metadata.json', JSON.stringify({
+                                    title: "Untitled Hunt"
+                                }));
+
+                                setActiveFolder(folder);
                             }
-                        }} />
-                    </View>
+
+                            // Step 2: Save image to folder
+                            const folderUri = FileSystem.documentDirectory + folder + '/';
+                            const files = await FileSystem.readDirectoryAsync(folderUri);
+                            const nextIndex = files.length + 1;
+                            const fileName = `${nextIndex}.jpg`;
+                            const newUri = folderUri + fileName;
+
+                            await FileSystem.moveAsync({
+                                from: capturedUri!,
+                                to: newUri,
+                            });
+
+                            Alert.alert("Photo Saved", `Saved to: ${folder}`);
+                            setCapturedUri(null);
+                            setMarker1(null);
+                            setMarker2(null);
+                        } catch (err) {
+                            console.error("Save error:", err);
+                            Alert.alert("Failed to save photo");
+                        }
+                    }} />
                 )}
 
                 {/* Back to live view button */}

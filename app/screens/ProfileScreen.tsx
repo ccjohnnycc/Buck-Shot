@@ -1,11 +1,20 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, Button, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { uploadTestHunt } from '../services/firebaseUtils';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect } from 'react';
 
 const ProfileScreen = () => {
   const [status, setStatus] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [email, setEmail] = useState<string>('');
+
+  useEffect(() => {
+    AsyncStorage.getItem('userEmail').then(email => {
+      setEmail(email || '');
+    });
+  }, []);
 
   const handleUpload = async () => {
     setStatus('Uploading test hunt…');
@@ -20,10 +29,11 @@ const ProfileScreen = () => {
 
     setLoading(false);
   };
+
   return (
     <View style={styles.container}>
-     <Feather name="user" size={100} color="#666" style={styles.avatar} />
-      <Text style={styles.username}>Username Placeholder</Text>
+      <Feather name="user" size={100} color="#666" style={styles.avatar} />
+      <Text style={styles.stat}>Email: {email}</Text>
       <Text style={styles.stat}>Total Hunts: 0</Text>
       <Text style={styles.stat}>Tagged Locations: 0</Text>
 
