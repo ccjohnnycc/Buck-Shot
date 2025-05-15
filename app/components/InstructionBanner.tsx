@@ -10,6 +10,7 @@ type InstructionBannerProps = {
 export default function InstructionBanner({ message, autoHideDuration = 5000 }: InstructionBannerProps) {
   const [visible, setVisible] = useState(true);
 
+  // Auto hides banner after the duration
   useEffect(() => {
     if (autoHideDuration > 0) {
       const timer = setTimeout(() => setVisible(false), autoHideDuration);
@@ -29,7 +30,7 @@ export default function InstructionBanner({ message, autoHideDuration = 5000 }: 
 const styles = StyleSheet.create({
   banner: {
     position: 'absolute',
-    marginTop: 100,
+    marginTop: 80,
     top: 40,
     width: '90%',
     alignSelf: 'center',
