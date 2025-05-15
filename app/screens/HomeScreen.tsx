@@ -48,6 +48,9 @@ export default function HomeScreen() {
                     <View style={styles.button}>
                         <Button title="Weather" onPress={() => { }} />
                     </View>
+                    <View style={styles.button}>
+                    <Button title="Journal" onPress={() => navigation.navigate('JournalList')} />
+                </View>
                 </View>
             </SafeAreaView>
         </ImageBackground>

@@ -9,6 +9,8 @@ import SignupScreen from '../screens/SignupScreen';
 import CalibrationScreen from '../screens/CalibrationScreen';
 import GalleryScreen from '../screens/GalleryScreen';
 import HuntDetailScreen from '../screens/HuntDetailScreen';
+import JournalListScreen from '../screens/JournalListScreen';
+import JournalEntryForm from '../screens/JournalEntryForm';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -20,6 +22,8 @@ export type RootStackParamList = {
   Calibration: undefined;
   Gallery: undefined;
   HuntDetail: { folderName: string };
+  JournalList: undefined;
+  JournalEntryForm: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -36,7 +40,7 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="AuthLanding"
-      screenOptions={commonHeaderOptions}>
+        screenOptions={commonHeaderOptions}>
         <Stack.Screen name="Home" component={HomeScreen} options={{ headerBackVisible: false }} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="Measure" component={MeasureScreen} />
@@ -45,7 +49,9 @@ export default function AppNavigator() {
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="Calibration" component={CalibrationScreen} />
         <Stack.Screen name="Gallery" component={GalleryScreen} />
-       <Stack.Screen name="HuntDetail" component={HuntDetailScreen} options={{ title: 'Hunt Details' }} />
+        <Stack.Screen name="HuntDetail" component={HuntDetailScreen} options={{ title: 'Hunt Details' }} />
+        <Stack.Screen name="JournalList" component={JournalListScreen} options={{ title: 'Hunt Journal' }} />
+        <Stack.Screen name="JournalEntryForm" component={JournalEntryForm} options={{ title: 'New Entry' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
