@@ -9,15 +9,25 @@ const screenWidth = Dimensions.get('window').width;
 export default function HuntDetailScreen() {
   const { folderName } = useRoute().params as { folderName: string };
   const [photos, setPhotos] = useState<string[]>([]);
-  const handleDeletePhoto = async (uriToDelete: string) => {
-    try {
-      await FileSystem.deleteAsync(uriToDelete, { idempotent: true });
-      setPhotos(prev => prev.filter(uri => uri !== uriToDelete));
-      Alert.alert('Deleted', 'Photo removed.');
-    } catch (err) {
-      console.error('Delete failed:', err);
-      Alert.alert('Delete failed');
-    }
+
+  const handleDeletePhoto = (uriToDelete: string) => {
+    Alert.alert("Delete Photo", "Are you sure you want to delete this photo?",
+      [{ text: "Cancel", style: "cancel" },
+      {
+        text: "Delete", style: "destructive",
+        onPress: async () => {
+          try {
+            await FileSystem.deleteAsync(uriToDelete, { idempotent: true });
+            setPhotos(prev => prev.filter(uri => uri !== uriToDelete));
+            Alert.alert('Deleted', 'Photo removed.');
+          } catch (err) {
+            console.error('Delete failed:', err);
+            Alert.alert('Delete failed');
+          }
+        }
+      }
+      ]
+    );
   };
 
   useEffect(() => {

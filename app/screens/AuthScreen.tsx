@@ -4,6 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { ScrollView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect } from 'react';
 
 type AuthNavProp = NativeStackNavigationProp<RootStackParamList, 'AuthLanding'>;
 
@@ -12,6 +14,16 @@ export default function AuthLandingScreen() {
   const background = require('../../assets/background_image.png'); // forest-style image
   const logo = require('../../assets/title_buck.png'); // buck logo
   const icon = require('../../assets/Buck-Shot_noBack.png'); // buck shot icon
+
+  useEffect(() => {
+  const checkLoggedIn = async () => {
+    const email = await AsyncStorage.getItem('userEmail');
+    if (email) {
+      navigation.navigate('Home');
+    }
+  };
+  checkLoggedIn();
+}, []);
 
   return (
     <ImageBackground source={background} style={styles.background}>

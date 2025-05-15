@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Button, SafeAreaView, ImageBackground, Image, A
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type HomeNavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -34,23 +35,34 @@ export default function HomeScreen() {
                         />
                     </View>
                     <View style={styles.button}>
-                     <Button 
-                     title="View Gallery" 
-                     onPress={() => navigation.navigate('Gallery')} 
-                     />
+                        <Button
+                            title="View Gallery"
+                            onPress={() => navigation.navigate('Gallery')}
+                        />
                     </View>
                     <View style={styles.button}>
-                        <Button 
-                        title="Capture Measurement" 
-                        onPress={() => navigation.navigate('Measure')} 
+                        <Button
+                            title="Capture Measurement"
+                            onPress={() => navigation.navigate('Measure')}
                         />
                     </View>
                     <View style={styles.button}>
                         <Button title="Weather" onPress={() => { }} />
                     </View>
                     <View style={styles.button}>
-                    <Button title="Journal" onPress={() => navigation.navigate('JournalList')} />
-                </View>
+                        <Button title="Journal" onPress={() => navigation.navigate('JournalList')} />
+                    </View>
+                    <Button
+                        title="Log Out"
+                        color="#ff4444"
+                        onPress={async () => {
+                            await AsyncStorage.removeItem('userEmail');
+                            navigation.reset({
+                                index: 0,
+                                routes: [{ name: 'AuthLanding' }],
+                            });
+                        }}
+                    />
                 </View>
             </SafeAreaView>
         </ImageBackground>
