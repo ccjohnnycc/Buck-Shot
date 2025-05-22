@@ -8,6 +8,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { Image } from 'react-native';
 import { RefreshControl } from 'react-native';
+import { auth } from '../services/firebaseConfig';
 
 type JournalNavProp = NativeStackNavigationProp<RootStackParamList, 'JournalList'>;
 
@@ -18,7 +19,11 @@ export default function JournalListScreen() {
 
   const fetchEntries = async () => {
     try {
-      const snapshot = await getDocs(collection(db, 'journalEntries'));
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const userRef = collection(db, `users/${user.uid}/journalEntries`);
+      const snapshot = await getDocs(userRef);
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setEntries(data.reverse()); // newest first
     } catch (err) {
@@ -38,7 +43,7 @@ export default function JournalListScreen() {
 
   const deleteEntry = async (id: string) => {
     try {
-      await deleteDoc(doc(db, 'journalEntries', id));
+      await deleteDoc(doc(db, `users/${auth.currentUser?.uid}/journalEntries`, id));
       setEntries(prev => prev.filter(entry => entry.id !== id));
     } catch (err) {
       console.error('Delete failed:', err);
