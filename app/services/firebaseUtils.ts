@@ -1,12 +1,10 @@
-import { getStorage, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { collection, addDoc } from 'firebase/firestore';
-import { db, storage } from './firebaseConfig';
-import { getAuth } from 'firebase/auth';
+import { db, storage, auth } from './firebaseConfig';
 import * as FileSystem from 'expo-file-system';
 
 
 export const uploadTestHunt = async () => {
-  const auth = getAuth();
   const user = auth.currentUser;
   if (!user) return { success: false, message: "Not logged in" };
 
@@ -36,7 +34,7 @@ export const uploadTestHunt = async () => {
 
     return { success: true };
   } catch (err) {
-    console.error('🔥 Local-only sync failed:', err);
+    console.error('Local-only sync failed:', err);
     return { success: false };
   }
 };
