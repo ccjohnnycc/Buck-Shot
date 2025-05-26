@@ -74,7 +74,7 @@ export default function GalleryScreen() {
   // HANDLE: DELETE FOLDER
   const handleDelete = async (folder: string) => {
     Alert.alert(
-      "Delete Hunt",
+      "Delete Hunt" ,
       "Are you sure you want to delete this hunt and all its photos?",
       [
         { text: "Cancel", style: "cancel" },
@@ -125,7 +125,7 @@ export default function GalleryScreen() {
                     <Text style={[styles.imageLabel, { textDecorationLine: 'underline' }]}>Rename</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDelete(hunt.folder)}>
-                    <Text style={[styles.imageLabel, { textDecorationLine: 'underline', color: '#ff4444' }]}>Delete</Text>
+                    <Text style={[styles.imageLabel, { textDecorationLine: 'underline', color: '#ff4444' }]}>Delete </Text>
                   </TouchableOpacity>
                 </View>
               </View>
