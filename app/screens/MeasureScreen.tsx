@@ -65,11 +65,12 @@ export default function MeasureScreen({ navigation }: any) {
         navigation.navigate('Calibration');
     };
 
-    const clearPoints = () => {
+    const clearAll = () => {
         setMarker1(null);
         setMarker2(null);
+        setCapturedUri(null);
     };
-    
+
     return (
         <View style={styles.container}>
 
@@ -97,21 +98,45 @@ export default function MeasureScreen({ navigation }: any) {
                 )}
 
                 {marker1 && (
-                    <DraggableCrosshair initialX={marker1.x} initialY={marker1.y} onDragEnd={setMarker1} />
+                    <DraggableCrosshair
+                        // force rerender when cleared
+                        key={`marker1-${marker1?.x}-${marker1?.y}`}
+                        initialX={marker1.x}
+                        initialY={marker1.y}
+                        onDragEnd={setMarker1}
+                        capturedUri={capturedUri}
+                    />
                 )}
                 {marker2 && (
-                    <DraggableCrosshair initialX={marker2.x} initialY={marker2.y} onDragEnd={setMarker2} />
+                    <DraggableCrosshair
+                        // force rerender when cleared
+                        key={`marker2-${marker2?.x}-${marker2?.y}`}
+                        initialX={marker2.x}
+                        initialY={marker2.y}
+                        onDragEnd={setMarker2}
+                        capturedUri={capturedUri}
+                    />
                 )}
 
                 {!marker1 && (
-                    <DraggableCrosshair initialX={width / 2 - 60} initialY={300} onDragEnd={setMarker1} />
+                    <DraggableCrosshair
+                        initialX={width / 2 - 60}
+                        initialY={300}
+                        onDragEnd={setMarker1}
+                        capturedUri={capturedUri}
+                    />
                 )}
                 {!marker2 && marker1 && (
-                    <DraggableCrosshair initialX={width / 2 + 60} initialY={300} onDragEnd={setMarker2} />
+                    <DraggableCrosshair
+                        initialX={width / 2 + 60}
+                        initialY={300}
+                        onDragEnd={setMarker2}
+                        capturedUri={capturedUri}
+                    />
                 )}
 
                 {/* Restart button */}
-                <TouchableOpacity style={styles.restartButton} onPress={clearPoints}>
+                <TouchableOpacity style={styles.restartButton} onPress={clearAll}>
                     <Text style={styles.restartText}>Restart </Text>
                 </TouchableOpacity>
             </View>
@@ -142,67 +167,71 @@ export default function MeasureScreen({ navigation }: any) {
                 />
 
                 {/* capture button */}
-                <Button title="Capture Image" onPress={async () => {
-                    if (cameraRef.current) {
-                        const photo = await cameraRef.current.takePictureAsync();
-                        setCapturedUri(photo.uri);
-                    }
-                }} />
-            {activeFolder && !capturedUri && (
-                <Button title="End Hunt Session" color="#ff4444" onPress={() => { setActiveFolder(null);
-                Alert.alert("Hunt ended", "Next photo will start a new folder.");
-            }}
-            />
-            )}
+                {/* only show “Capture” when there’s no image */}
+                {!capturedUri && (
+                    <View style={styles.buttonSpacing}>
+                        <Button
+                            title="Capture Image"
+                            onPress={async () => {
+                                if (cameraRef.current) {
+                                    const photo = await cameraRef.current.takePictureAsync();
+                                    setCapturedUri(photo.uri);
+                                }
+                            }}
+                        />
+                    </View>
+                )}
+
+                {activeFolder && !capturedUri && (
+                    <View style={styles.buttonSpacing}>
+                        <Button title="End Hunt Session" color="#ff4444" onPress={() => {
+                            setActiveFolder(null);
+                            Alert.alert("Hunt ended", "Next photo will start a new folder.");
+                        }}
+                        />
+                    </View>
+                )}
 
                 {/* Show save button after capturing */}
                 {capturedUri && (
-                    <Button title="Save to Hunt Folder" onPress={async () => {
-                        try {
-                            // Step 1: Create or reuse active folder
-                            let folder = activeFolder;
-                            if (!folder) {
-                                folder = `hunt_${Date.now()}`;
-                                const folderUri = FileSystem.documentDirectory + folder + '/';
-                                await FileSystem.makeDirectoryAsync(folderUri, { intermediates: true });
-
-                                // Save default metadata
-                                await FileSystem.writeAsStringAsync(folderUri + 'metadata.json', JSON.stringify({
-                                    title: "Untitled Hunt"
-                                }));
-
-                                setActiveFolder(folder);
-                            }
-
-                            // Step 2: Save image to folder
-                            const folderUri = FileSystem.documentDirectory + folder + '/';
-                            const files = await FileSystem.readDirectoryAsync(folderUri);
-                            const nextIndex = files.length + 1;
-                            const fileName = `${nextIndex}.jpg`;
-                            const newUri = folderUri + fileName;
-
-                            await FileSystem.moveAsync({
-                                from: capturedUri!,
-                                to: newUri,
-                            });
-
-                            Alert.alert("Photo Saved", `Saved to: ${folder}`);
-                            setCapturedUri(null);
-                            setMarker1(null);
-                            setMarker2(null);
-                        } catch (err) {
-                            console.error("Save error:", err);
-                            Alert.alert("Failed to save photo");
-                        }
-                    }} />
-                )}
-
-                {/* Back to live view button */}
-                {capturedUri && (
                     <View style={styles.buttonSpacing}>
-                        <Button title="Return to Live Camera" onPress={() => {
-                            setCapturedUri(null);
-                            clearPoints();
+                        <Button title="Save to Hunt Folder" onPress={async () => {
+                            try {
+                                // Step 1: Create or reuse active folder
+                                let folder = activeFolder;
+                                if (!folder) {
+                                    folder = `hunt_${Date.now()}`;
+                                    const folderUri = FileSystem.documentDirectory + folder + '/';
+                                    await FileSystem.makeDirectoryAsync(folderUri, { intermediates: true });
+
+                                    // Save default metadata
+                                    await FileSystem.writeAsStringAsync(folderUri + 'metadata.json', JSON.stringify({
+                                        title: "Untitled Hunt"
+                                    }));
+
+                                    setActiveFolder(folder);
+                                }
+
+                                // Step 2: Save image to folder
+                                const folderUri = FileSystem.documentDirectory + folder + '/';
+                                const files = await FileSystem.readDirectoryAsync(folderUri);
+                                const nextIndex = files.length + 1;
+                                const fileName = `${nextIndex}.jpg`;
+                                const newUri = folderUri + fileName;
+
+                                await FileSystem.moveAsync({
+                                    from: capturedUri!,
+                                    to: newUri,
+                                });
+
+                                Alert.alert("Photo Saved", `Saved to: ${folder}`);
+                                setCapturedUri(null);
+                                setMarker1(null);
+                                setMarker2(null);
+                            } catch (err) {
+                                console.error("Save error:", err);
+                                Alert.alert("Failed to save photo");
+                            }
                         }} />
                     </View>
                 )}
@@ -253,7 +282,7 @@ const styles = StyleSheet.create({
     },
     restartButton: {
         position: 'absolute',
-        marginTop: 60,
+        marginTop: 100,
         right: 20,
         backgroundColor: 'rgba(0,0,0,0.6)',
         padding: 10,
