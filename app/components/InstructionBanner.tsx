@@ -4,10 +4,11 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
 type InstructionBannerProps = {
   message: string;
+  message2: string;
   autoHideDuration?: number;
 };
 
-export default function InstructionBanner({ message, autoHideDuration = 5000 }: InstructionBannerProps) {
+export default function InstructionBanner({ message, message2, autoHideDuration = 5000 }: InstructionBannerProps) {
   const [visible, setVisible] = useState(true);
 
   // Auto hides banner after the duration
@@ -21,16 +22,33 @@ export default function InstructionBanner({ message, autoHideDuration = 5000 }: 
   if (!visible) return null;
 
   return (
-    <TouchableOpacity style={styles.banner} onPress={() => setVisible(false)}>
-      <Text style={styles.text}>{message}</Text>
-    </TouchableOpacity>
+    <>
+      <TouchableOpacity style={styles.banner} onPress={() => setVisible(false)}>
+        <Text style={styles.text}>{message}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.banner2} onPress={() => setVisible(false)}>
+        <Text style={styles.text}>{message2}</Text>
+      </TouchableOpacity>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   banner: {
     position: 'absolute',
-    marginTop: 80,
+    marginTop: 115,
+    top: 40,
+    width: '90%',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 12,
+    borderRadius: 10,
+    zIndex: 10,
+  },
+  banner2: {
+    position: 'absolute',
+    marginTop: 200,
     top: 40,
     width: '90%',
     alignSelf: 'center',
