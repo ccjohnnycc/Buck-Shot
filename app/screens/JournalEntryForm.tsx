@@ -5,6 +5,7 @@ import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../services/firebaseConfig';
 import * as ImagePicker from 'expo-image-picker';
 import { Image, TouchableOpacity } from 'react-native';
+import { auth } from '../services/firebaseConfig';
 
 export default function JournalScreen() {
   const navigation = useNavigation();
@@ -36,7 +37,14 @@ export default function JournalScreen() {
     }
 
     try {
-      await addDoc(collection(db, 'journalEntries'), {
+      const user = auth.currentUser;
+      if (!user) {
+        Alert.alert("Not logged in", "Please log in to save journal entries.");
+        return;
+      }
+
+      const userRef = collection(db, `users/${user.uid}/journalEntries`);
+      await addDoc(userRef, {
         ...entry,
         imageUri,
         timestamp: new Date().toISOString(),

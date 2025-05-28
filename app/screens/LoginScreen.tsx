@@ -3,9 +3,9 @@ import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { db } from '../services/firebaseConfig';
-import { collection, getDocs, query, where } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../services/firebaseConfig';
 
 
 type LoginNavProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -21,20 +21,15 @@ export default function LoginScreen() {
       return;
     }
 
-    try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', email), where('password', '==', password));
-      const result = await getDocs(q);
+   try {
+  const userCred = await signInWithEmailAndPassword(auth, email, password);
+  const user = userCred.user;
 
-      if (result.empty) {
-        Alert.alert('Invalid email or password');
-        return;
-      }
-      await AsyncStorage.setItem('userEmail', email);
-      navigation.navigate('Home');
-    } catch (err: any) {
-      Alert.alert('Login failed', err.message);
-    }
+  await AsyncStorage.setItem('userEmail', user.email || '');
+  navigation.navigate('Home');
+} catch (err: any) {
+  Alert.alert('Login failed', err.message);
+}
   };
 
   return (

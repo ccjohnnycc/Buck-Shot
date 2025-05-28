@@ -1,22 +1,43 @@
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from './firebaseConfig';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { storage } from './firebaseConfig';
+import { collection, addDoc } from 'firebase/firestore';
+import { db, storage, auth } from './firebaseConfig';
+import * as FileSystem from 'expo-file-system';
 
-export async function uploadTestHunt() {
+
+export const uploadTestHunt = async () => {
+  const user = auth.currentUser;
+  if (!user) return { success: false, message: "Not logged in" };
+
   try {
-    const docRef = await addDoc(collection(db, 'hunts'), {
-      hunter: 'Josh',
-      score: 155,
-      timestamp: new Date().toISOString(),
-      location: 'Test Spot',
-    });
-    return { success: true, id: docRef.id };
-  } catch (error) {
-    console.error('Error uploading hunt:', error);
-    return { success: false, error };
+    const huntFolders = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
+    const hunts = huntFolders.filter(name => name.startsWith('hunt_') && !name.endsWith('.jpg'));
+
+    for (const folder of hunts) {
+      const folderUri = FileSystem.documentDirectory + folder + '/';
+      const files = (await FileSystem.readDirectoryAsync(folderUri)).filter(f => f.endsWith('.jpg'));
+
+      if (files.length === 0) {
+        console.log('Skipping empty folder:', folder);
+        continue;
+      }
+
+      const imageUris = files.map(f => folderUri + f);
+
+      await addDoc(collection(db, `users/${user.uid}/hunts`), {
+        folderName: folder,
+        imageUris,
+        timestamp: new Date().toISOString()
+      });
+
+      console.log('Fake synced hunt with local URIs:', folder);
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('Local-only sync failed:', err);
+    return { success: false };
   }
-}
+};
 
 export async function uploadCapturedImage(uri: string, userId: string) {
   try {

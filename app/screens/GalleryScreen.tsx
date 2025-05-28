@@ -4,6 +4,8 @@ import * as FileSystem from 'expo-file-system';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { auth, db } from '../services/firebaseConfig';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -85,6 +87,22 @@ export default function GalleryScreen() {
             try {
               const folderUri = FileSystem.documentDirectory + folder + '/';
               await FileSystem.deleteAsync(folderUri, { idempotent: true });
+
+              const user = auth.currentUser;
+              if (user) {
+                const huntsRef = collection(db, `users/${user.uid}/hunts`);
+                const snapshot = await getDocs(huntsRef);
+
+                for (const huntDoc of snapshot.docs) {
+                  const data = huntDoc.data();
+                  if (data.folderName === folder) {
+                    await deleteDoc(doc(db, `users/${user.uid}/hunts`, huntDoc.id));
+                    console.log('🗑️ Deleted Firestore hunt entry:', huntDoc.id);
+                    break;
+                  }
+                }
+              }
+
               loadHuntFolders();
             } catch (err) {
               console.error("Failed to delete folder:", err);

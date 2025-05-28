@@ -3,9 +3,11 @@ import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { db } from '../services/firebaseConfig';
-import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../services/firebaseConfig';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../services/firebaseConfig';
 
 type SignupNavProp = NativeStackNavigationProp<RootStackParamList, 'Signup'>;
 
@@ -21,23 +23,19 @@ export default function SignupScreen() {
       return;
     }
 
-    try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', email));
-      const existing = await getDocs(q);
+try {
+  const userCred = await createUserWithEmailAndPassword(auth, email, password);
+  const user = userCred.user;
 
-      if (!existing.empty) {
-        Alert.alert('User already exists');
-        return;
-      }
-
-      await addDoc(usersRef, {
+      await AsyncStorage.setItem('userEmail', user.email || '');
+      await setDoc(doc(db, `users/${user.uid}/profile`), {
         name,
         email,
-        password, 
         createdAt: new Date().toISOString()
       });
-      await AsyncStorage.setItem('userEmail', email);
+
+      await AsyncStorage.setItem('userEmail', user.email || '');
+      navigation.navigate('Home');
       navigation.navigate('Home');
     } catch (err: any) {
       Alert.alert('Signup failed', err.message);

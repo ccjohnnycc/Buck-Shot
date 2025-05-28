@@ -1,9 +1,11 @@
+import { signOut } from 'firebase/auth';
 import React from 'react';
 import { View, Text, StyleSheet, Button, SafeAreaView, ImageBackground, Image, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth } from '../services/firebaseConfig';
 
 type HomeNavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -36,12 +38,6 @@ export default function HomeScreen() {
                     </View>
                     <View style={styles.button}>
                         <Button
-                            title="View Gallery"
-                            onPress={() => navigation.navigate('Gallery')}
-                        />
-                    </View>
-                    <View style={styles.button}>
-                        <Button
                             title="Capture Measurement"
                             onPress={() => navigation.navigate('Measure')}
                         />
@@ -49,18 +45,21 @@ export default function HomeScreen() {
                     <View style={styles.button}>
                         <Button title="Weather" onPress={() => { }} />
                     </View>
-                    <View style={styles.button}>
-                        <Button title="Journal" onPress={() => navigation.navigate('JournalList')} />
-                    </View>
                     <Button
                         title="Log Out"
                         color="#ff4444"
                         onPress={async () => {
-                            await AsyncStorage.removeItem('userEmail');
-                            navigation.reset({
-                                index: 0,
-                                routes: [{ name: 'AuthLanding' }],
-                            });
+                            try {
+                                await signOut(auth); // <-- this logs the user out from Firebase
+                                await AsyncStorage.removeItem('userEmail');
+                                navigation.reset({
+                                    index: 0,
+                                    routes: [{ name: 'AuthLanding' }],
+                                });
+                            } catch (err) {
+                                console.error('Logout error:', err);
+                                Alert.alert('Error', 'Failed to log out. Try again.');
+                            }
                         }}
                     />
                 </View>

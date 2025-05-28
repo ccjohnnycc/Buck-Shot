@@ -6,6 +6,8 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
+import { auth } from '../services/firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
 
 type AuthNavProp = NativeStackNavigationProp<RootStackParamList, 'AuthLanding'>;
 
@@ -15,14 +17,22 @@ export default function AuthLandingScreen() {
   const logo = require('../../assets/title_buck.png'); // buck logo
   const icon = require('../../assets/Buck-Shot_noBack.png'); // buck shot icon
 
-  useEffect(() => {
-  const checkLoggedIn = async () => {
-    const email = await AsyncStorage.getItem('userEmail');
-    if (email) {
-      navigation.navigate('Home');
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      console.log('Auth state changed: Logged in as', user.email);
+      await AsyncStorage.setItem('userEmail', user.email || '');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
+    } else {
+      console.log('Auth state changed: Not logged in');
+      await AsyncStorage.removeItem('userEmail');
     }
-  };
-  checkLoggedIn();
+  });
+
+  return unsubscribe;
 }, []);
 
   return (
