@@ -13,6 +13,9 @@ import type { CameraView as CameraViewRef } from 'expo-camera';
 import { useIsFocused } from '@react-navigation/native';
 import InstructionBanner from '../components/InstructionBanner';
 import DraggableCrosshair from '../components/DraggableCrosshair';
+import * as Location from 'expo-location';
+import { auth } from '../services/firebaseConfig';
+
 
 const { width } = Dimensions.get('window');
 const MARKER_SIZE = 40;
@@ -35,6 +38,7 @@ export default function MeasureScreen({ navigation }: any) {
     const [saveRaw, setSaveRaw] = useState(true);
     const [saveUX, setSaveUX] = useState(false);
     const containerRef = useRef<View>(null);
+    const [saveJournal, setSaveJournal] = useState(false);
 
     React.useEffect(() => {
         const loadCalibration = async () => {
@@ -124,55 +128,61 @@ export default function MeasureScreen({ navigation }: any) {
         try {
             const folder = await ensureFolder();
             const folderUri = FileSystem.documentDirectory + folder + '/';
+            let rawUri: string | null = null;
+            let uxSnapshotUri: string | null = null;
 
             // Save raw photo if selected
             if (saveRaw && capturedUri) {
                 const files = await FileSystem.readDirectoryAsync(folderUri);
                 const rawIndex = files.length + 1;
+                const dest = `${folderUri}${rawIndex}.jpg`;
                 try {
-                    await FileSystem.moveAsync({
-                        from: capturedUri,
-                        to: `${folderUri}${rawIndex}.jpg`,
-                    });
+                    await FileSystem.moveAsync({ from: capturedUri, to: dest });
                 } catch {
-                    // if move fails copy instead
-                    await FileSystem.copyAsync({
-                        from: capturedUri,
-                        to: `${folderUri}${rawIndex}.jpg`,
-                    });
+                    await FileSystem.copyAsync({ from: capturedUri, to: dest });
                 }
+                rawUri = dest;
             }
 
             // Save annotated photo if selected
             if (saveUX) {
-                if (!containerRef.current) {
-                    throw new Error('Cannot capture annotated view: reference is null');
-                }
-                // Capture the annotated view
-                // explicitly grab the native handle in case the ref object needs it
-                const target = findNodeHandle(containerRef.current);
-                if (!target) throw new Error('Could not resolve native view');
-                const snapshotUri = await captureRef(target, {
-                    format: 'jpg',
-                    quality: 1,
-                });
+                if (!containerRef.current) throw new Error('No view to capture');
+                const target = findNodeHandle(containerRef.current)!;
+                const snapshot = await captureRef(target, { format: 'jpg', quality: 1 });
                 const files2 = await FileSystem.readDirectoryAsync(folderUri);
                 const uxIndex = files2.length + 1;
-                // Attempt to move the snapshot; on failure, copy instead
+                const dest2 = `${folderUri}${uxIndex}.jpg`;
                 try {
-                    await FileSystem.moveAsync({
-                        from: snapshotUri,
-                        to: `${folderUri}${uxIndex}.jpg`,
-                    });
+                    await FileSystem.moveAsync({ from: snapshot, to: dest2 });
                 } catch {
-                    await FileSystem.copyAsync({
-                        from: snapshotUri,
-                        to: `${folderUri}${uxIndex}.jpg`,
-                    });
+                    await FileSystem.copyAsync({ from: snapshot, to: dest2 });
                 }
+                uxSnapshotUri = dest2;
             }
 
-            Alert.alert('Saved', 'Your photo(s) have been saved to the hunt.');
+            if (saveJournal) {
+                let coords = null;
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    const { coords: c } = await Location.getCurrentPositionAsync({});
+                    coords = { latitude: c.latitude, longitude: c.longitude };
+                }
+                // grab measurement & user displayName
+                const measurement = inches.toFixed(2);
+                const userName = auth.currentUser?.displayName
+                    ?? auth.currentUser?.email
+                    ?? 'Unknown';
+                // navigate into the journal form
+                navigation.navigate('JournalEntryForm', {
+                    imageUri: saveUX ? uxSnapshotUri : rawUri,
+                    measurement,
+                    coords,
+                    userName
+                });
+                return;
+            }
+
+            Alert.alert('Saved', 'Your photo has been saved to the hunt.');
             setModalVisible(false);
             clearAll();
         } catch (err) {
@@ -185,8 +195,8 @@ export default function MeasureScreen({ navigation }: any) {
         <View style={styles.container}>
 
             {/* Instruction banner to guide the user */}
-            <InstructionBanner message="Drag and drop two markers to measure distance." 
-            message2="Hold camera 3 feet or 36 inches away from your card." autoHideDuration={6000} />
+            <InstructionBanner message="Drag and drop two markers to measure distance."
+                message2="Hold camera 3 feet or 36 inches away from your card." autoHideDuration={6000} />
 
             {/* Container for the camera preview and tap overlay */}
             <View style={styles.camera} ref={containerRef} collapsable={false}>
@@ -347,6 +357,10 @@ export default function MeasureScreen({ navigation }: any) {
                         <View style={styles.optionRow}>
                             <Text style={styles.optionLabel}>Photo + Markers </Text>
                             <Switch value={saveUX} onValueChange={setSaveUX} />
+                        </View>
+                        <View style={styles.optionRow}>
+                            <Text style={styles.optionLabel}>Create Journal Entry </Text>
+                            <Switch value={saveJournal} onValueChange={setSaveJournal} />
                         </View>
                         <View style={styles.modalButtons}>
                             <Button title="Cancel" onPress={() => setModalVisible(false)} />
