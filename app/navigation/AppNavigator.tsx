@@ -23,7 +23,12 @@ export type RootStackParamList = {
   Gallery: { filterTags?: string[] };
   HuntDetail: { folderName: string };
   JournalList: { filterTags?: string[] };
-  JournalEntryForm: { entryId?: string };
+  JournalEntryForm: {
+  entryId?: string;
+  imageUri?: string;
+  measurement?: string;
+  coords?: { latitude: number; longitude: number };
+  userName?: string;};
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

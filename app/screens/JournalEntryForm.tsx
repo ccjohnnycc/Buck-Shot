@@ -20,7 +20,7 @@ export default function JournalScreen() {
 
   const navigation = useNavigation();
   const route = useRoute<EntryRouteProp>();
-  const { entryId } = route.params || {};
+  const { entryId, imageUri: incomingUri, measurement, coords, userName } = route.params || {};
 
   const [entry, setEntry] = useState({
     species: '',
@@ -30,47 +30,58 @@ export default function JournalScreen() {
   });
 
   // Load existing entry if editing
-  useEffect(() => {
-    const loadEntry = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
+useEffect(() => {
+  const loadEntry = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
 
-      setUserEmail(user.email || 'Unknown');
+    setUserEmail(user.email || userName || 'Unknown');
 
-      if (!entryId) {
-        // Get location for new entries
+    if (!entryId) {
+      if (incomingUri) setImageUri(incomingUri);
+      if (coords) {
+        const loc = `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`;
+        setEntry(prev => ({ ...prev, location: loc }));
+      } else {
         try {
           const { status } = await Location.requestForegroundPermissionsAsync();
           if (status !== 'granted') throw new Error('Permission denied');
-          const coords = await Location.getCurrentPositionAsync();
-          const loc = `${coords.coords.latitude.toFixed(5)}, ${coords.coords.longitude.toFixed(5)}`;
+          const current = await Location.getCurrentPositionAsync();
+          const loc = `${current.coords.latitude.toFixed(5)}, ${current.coords.longitude.toFixed(5)}`;
           setEntry(prev => ({ ...prev, location: loc }));
         } catch (err) {
           console.warn('Location error:', err);
-        } finally {
-          setLocLoading(false);
         }
-        return;
       }
 
-      const entryRef = doc(db, `users/${user.uid}/journalEntries`, entryId);
-      const snapshot = await getDoc(entryRef);
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        setEntry({
-          species: data.species || '',
-          width: data.width || '',
-          notes: data.notes || '',
-          location: data.location || '',
-        });
-        setImageUri(data.imageUri || null);
-        setTags(data.tags || []);
+      if (measurement) {
+        setEntry(prev => ({ ...prev, width: measurement }));
       }
+
       setLocLoading(false);
-    };
+      return;
+    }
 
-    loadEntry();
-  }, [entryId]);
+    // Editing existing entry
+    const entryRef = doc(db, `users/${user.uid}/journalEntries`, entryId);
+    const snapshot = await getDoc(entryRef);
+    if (snapshot.exists()) {
+      const data = snapshot.data();
+      setEntry({
+        species: data.species || '',
+        width: data.width || '',
+        notes: data.notes || '',
+        location: data.location || '',
+      });
+      setImageUri(data.imageUri || null);
+      setTags(data.tags || []);
+    }
+
+    setLocLoading(false);
+  };
+
+  loadEntry();
+}, [entryId]);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({

@@ -21,6 +21,8 @@ const { width } = Dimensions.get('window');
 const MARKER_SIZE = 40;
 
 export default function MeasureScreen({ navigation }: any) {
+    const [hasSaved, setHasSaved] = useState(false);
+
     const [facing, setFacing] = useState<CameraType>('back');
     const [permission, requestPermission] = useCameraPermissions();
     // Stores the distance from the camera in inches
@@ -125,6 +127,9 @@ export default function MeasureScreen({ navigation }: any) {
 
     // Save logic based on user selection
     const handleConfirmSave = async () => {
+
+        if (hasSaved) return; 
+        setHasSaved(true);
         try {
             const folder = await ensureFolder();
             const folderUri = FileSystem.documentDirectory + folder + '/';
@@ -161,6 +166,8 @@ export default function MeasureScreen({ navigation }: any) {
             }
 
             if (saveJournal) {
+                setHasSaved(true);
+                
                 let coords = null;
                 const { status } = await Location.requestForegroundPermissionsAsync();
                 if (status === 'granted') {
@@ -188,7 +195,7 @@ export default function MeasureScreen({ navigation }: any) {
         } catch (err) {
             console.error('Save error:', err);
             Alert.alert('Failed to save photo');
-        }
+        } 
     };
 
     return (
@@ -364,7 +371,11 @@ export default function MeasureScreen({ navigation }: any) {
                         </View>
                         <View style={styles.modalButtons}>
                             <Button title="Cancel" onPress={() => setModalVisible(false)} />
-                            <Button title="Save" onPress={handleConfirmSave} />
+                            {hasSaved ? (
+                                <Button title="Done" onPress={() => setModalVisible(false)} />
+                            ) : (
+                                <Button title="Save" onPress={handleConfirmSave} />
+                            )}
                         </View>
                     </View>
                 </View>
