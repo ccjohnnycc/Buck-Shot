@@ -5,9 +5,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../services/firebaseConfig';
+import { auth, db } from '../services/firebaseConfig';
 import { doc, setDoc } from 'firebase/firestore';
-import { db } from '../services/firebaseConfig';
 
 type SignupNavProp = NativeStackNavigationProp<RootStackParamList, 'Signup'>;
 
@@ -23,19 +22,18 @@ export default function SignupScreen() {
       return;
     }
 
-try {
-  const userCred = await createUserWithEmailAndPassword(auth, email, password);
-  const user = userCred.user;
+    try {
+      const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCred.user;
 
       await AsyncStorage.setItem('userEmail', user.email || '');
-      await setDoc(doc(db, `users/${user.uid}/profile`), {
+      await setDoc(doc(db, 'users', user.uid), {
         name,
         email,
         createdAt: new Date().toISOString()
       });
 
       await AsyncStorage.setItem('userEmail', user.email || '');
-      navigation.navigate('Home');
       navigation.navigate('Home');
     } catch (err: any) {
       Alert.alert('Signup failed', err.message);
