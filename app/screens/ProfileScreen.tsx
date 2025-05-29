@@ -164,29 +164,7 @@ const checkUnsyncedHunts = async () => {
           <Button title="Sync to Cloud" onPress={handleUpload} color="#FFA500" disabled={loading || !hasUnsyncedHunts} />
           <View style={{ marginVertical: 8 }} />
           <Button title="Edit Profile" onPress={() => Alert.alert("Coming Soon", "Edit Profile is not available yet.")} />
-            <Button
-  title="Reset Local Hunts"
-  color="#ff4444"
-  onPress={async () => {
-    try {
-      const files = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
-      const huntFolders = files.filter(name => name.startsWith('hunt_'));
-
-      for (const folder of huntFolders) {
-        const path = FileSystem.documentDirectory + folder + '/';
-        await FileSystem.deleteAsync(path, { idempotent: true });
-      }
-
-      await AsyncStorage.clear(); // This is fine — just don't delete the backing folder manually
-      Alert.alert("Reset complete", "All local hunt folders and app data have been cleared.");
-    } catch (err) {
-      console.error('Failed to wipe device:', err);
-      Alert.alert("Error", "Failed to reset hunt data.");
-    }
-  }}
-/>
         </View>
-
         {status ? <Text style={styles.status}>{status}</Text> : null}
         {loading && <ActivityIndicator size="large" color="#FFD700" />}
       </View>

@@ -7,6 +7,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { Query, DocumentData, collection, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore';
 import { auth, db } from '../services/firebaseConfig';
 import { useRoute, RouteProp } from '@react-navigation/native';
+import TagInput from '../components/TagInput';
 
 
 const screenWidth = Dimensions.get('window').width;
@@ -22,64 +23,88 @@ export default function GalleryScreen() {
     previewUri: string;
     photoCount: number;
     date: string;
+    tags?: string[];
   }>>([]);
 
   const [renamingFolder, setRenamingFolder] = useState<string | null>(null);
   const [renameInput, setRenameInput] = useState('');
   const [showRenameModal, setShowRenameModal] = useState(false);
 
+
   const navigation = useNavigation<NavProp>();
   const route = useRoute<GalleryRouteProp>();
-  const { filterTags } = route.params || {};
+  const { filterTags = [] } = route.params || {};
+
+  const [editingTagsFolder, setEditingTagsFolder] = useState<string | null>(null);
+  const [tempTags, setTempTags] = useState<string[]>([]);
+  const [showTagModal, setShowTagModal] = useState(false);
 
   // LOAD HUNT FOLDERS
-const loadHuntFolders = async () => {
+  const loadHuntFolders = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const baseRef = collection(db, `users/${user.uid}/hunts`);
+      const huntsRef = Array.isArray(filterTags) && filterTags.length > 0
+        ? query(baseRef, where('tags', 'array-contains-any', filterTags))
+        : baseRef;
+
+      const snapshot = await getDocs(huntsRef);
+
+      const firestoreFolders = snapshot.docs.map(doc => doc.data().folderName);
+
+      const localItems = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
+      const huntFolders = localItems.filter(name =>
+        firestoreFolders.includes(name) &&
+        name.startsWith('hunt_') && !name.endsWith('.jpg')
+      );
+      let filteredHuntFolders = await Promise.all(huntFolders.map(async folder => {
+  const folderUri = FileSystem.documentDirectory + folder + '/';
   try {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    const baseRef = collection(db, `users/${user.uid}/hunts`);
-    const huntsRef = Array.isArray(filterTags) && filterTags.length > 0
-      ? query(baseRef, where('tags', 'array-contains-any', filterTags))
-      : baseRef;
-
-    const snapshot = await getDocs(huntsRef);
-
-    const firestoreFolders = snapshot.docs.map(doc => doc.data().folderName);
-
-    const localItems = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
-    const huntFolders = localItems.filter(name =>
-      firestoreFolders.includes(name) &&
-      name.startsWith('hunt_') && !name.endsWith('.jpg')
-    );
-
-    const huntData = await Promise.all(huntFolders.map(async folder => {
-      const folderUri = FileSystem.documentDirectory + folder + '/';
-      const files = await FileSystem.readDirectoryAsync(folderUri);
-      const imageFiles = files.filter(f => f.endsWith('.jpg'));
-
-      let title = "Untitled Hunt";
-      try {
-        const metadata = await FileSystem.readAsStringAsync(folderUri + 'metadata.json');
-        title = JSON.parse(metadata).title;
-      } catch (err) {
-        console.warn(`No title found for ${folder}`);
-      }
-
-      return {
-        folder,
-        previewUri: folderUri + imageFiles[0],
-        photoCount: imageFiles.length,
-        date: new Date(Number(folder.split('_')[1])).toLocaleDateString(),
-        title,
-      };
-    }));
-
-    setHuntFolders(huntData.reverse()); // newest first
-  } catch (error) {
-    console.error('Failed to load hunts:', error);
+    const metadataStr = await FileSystem.readAsStringAsync(folderUri + 'metadata.json');
+    const metadata = JSON.parse(metadataStr);
+    const tags = metadata.tags || [];
+    const hasMatch = filterTags.length === 0 || tags.some((tag: string) => filterTags.includes(tag))
+    return hasMatch ? folder : null;
+  } catch {
+    return null;
   }
-};
+}));
+
+const validFolders = filteredHuntFolders.filter(Boolean) as string[];
+
+      const huntData = await Promise.all(huntFolders.map(async folder => {
+        const folderUri = FileSystem.documentDirectory + folder + '/';
+        const files = await FileSystem.readDirectoryAsync(folderUri);
+        const imageFiles = files.filter(f => f.endsWith('.jpg'));
+
+        let title = "Untitled Hunt";
+        let tags: string[] = [];
+        try {
+          const metadata = await FileSystem.readAsStringAsync(folderUri + 'metadata.json');
+          const parsed = JSON.parse(metadata);
+          title = parsed.title || title;
+          tags = parsed.tags || [];
+        } catch (err) {
+          console.warn(`No title found for ${folder}`);
+        }
+
+        return {
+          folder,
+          previewUri: folderUri + imageFiles[0],
+          photoCount: imageFiles.length,
+          date: new Date(Number(folder.split('_')[1])).toLocaleDateString(),
+          title,
+          tags,
+        };
+      }));
+
+      setHuntFolders(huntData.reverse()); // newest first
+    } catch (error) {
+      console.error('Failed to load hunts:', error);
+    }
+  };
 
   useEffect(() => {
     loadHuntFolders();
@@ -155,7 +180,22 @@ const loadHuntFolders = async () => {
               style={styles.imageCard}
               onPress={() => navigation.navigate('HuntDetail', { folderName: hunt.folder })}
             >
+              <View style={{ padding: 10 }}>
+                <Text style={styles.huntTitle}>{hunt.title}</Text>
+              </View>
               <Image source={{ uri: hunt.previewUri }} style={styles.image} />
+
+              {hunt.tags && hunt.tags.length > 0 && (
+                <View style={styles.tagFooter}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {hunt.tags.map((tag, i) => (
+                      <View key={i} style={styles.tagChip}>
+                        <Text style={styles.tagText}>{tag}</Text>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
               <View style={styles.infoPanel}>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
                   <TouchableOpacity onPress={() => handleRename(hunt.folder)}>
@@ -163,6 +203,13 @@ const loadHuntFolders = async () => {
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDelete(hunt.folder)}>
                     <Text style={[styles.imageLabel, { textDecorationLine: 'underline', color: '#ff4444' }]}>Delete</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => {
+                    setEditingTagsFolder(hunt.folder);
+                    setTempTags(hunt.tags || []); 
+                    setShowTagModal(true);
+                  }}>
+                    <Text style={[styles.imageLabel, { textDecorationLine: 'underline', color: '#00d9ff' }]}>Tags</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -212,6 +259,43 @@ const loadHuntFolders = async () => {
           </View>
         </View>
       </Modal>
+      {/* MODAL: Tags */}
+      <Modal visible={showTagModal} transparent animationType="fade" onRequestClose={() => {
+        setShowTagModal(false);
+        setEditingTagsFolder(null);
+        setTempTags([]);
+      }}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Tags</Text>
+            <TagInput tags={tempTags} setTags={setTempTags} placeholder="Add tags like '10-point' or 'morning'" />
+            <View style={styles.modalButtons}>
+              <Button title="Done" onPress={async () => {
+                if (editingTagsFolder) {
+                  const folderUri = FileSystem.documentDirectory + editingTagsFolder + '/';
+                  try {
+                    let metadata = { title: 'Untitled Hunt', tags: tempTags };
+
+                    const info = await FileSystem.getInfoAsync(folderUri + 'metadata.json');
+                    if (info.exists) {
+                      const existing = await FileSystem.readAsStringAsync(folderUri + 'metadata.json');
+                      metadata = { ...JSON.parse(existing), tags: tempTags };
+                    }
+
+                    await FileSystem.writeAsStringAsync(folderUri + 'metadata.json', JSON.stringify(metadata));
+                    await loadHuntFolders();
+                  } catch (err) {
+                    console.error('Failed to save tags:', err);
+                  }
+                }
+                setShowTagModal(false);
+                setEditingTagsFolder(null);
+                setTempTags([]);
+              }} />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ImageBackground>
   );
 }
@@ -234,7 +318,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFD700',
     marginBottom: 5,
-    marginTop: 65, 
+    marginTop: 65,
   },
   message: {
     fontSize: 18,
@@ -296,5 +380,37 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  huntTitle: {
+    color: '#FFD700',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 10,
+    marginBottom: 10,
+  },
+  tagChip: {
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginRight: 6,
+    marginBottom: 6,
+  },
+  tagText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  tagFooter: {
+    backgroundColor: '#222',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderTopWidth: 1,
+    borderColor: '#333',
   },
 });
