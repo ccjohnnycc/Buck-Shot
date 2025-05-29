@@ -1,21 +1,51 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ImageBackground, Alert, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, StyleSheet, ImageBackground, Alert, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { collection, addDoc } from 'firebase/firestore';
-import { db } from '../services/firebaseConfig';
+import { db, auth } from '../services/firebaseConfig';
 import * as ImagePicker from 'expo-image-picker';
-import { Image, TouchableOpacity } from 'react-native';
-import { auth } from '../services/firebaseConfig';
+import * as Location from 'expo-location';
 
 export default function JournalScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
+  const { params } = useRoute();
+  const {
+    imageUri: defaultImageUri,
+    measurement,
+    coords,
+    userName
+  } = (params as any) || {};
+
+  // default coords if not provided
   const [entry, setEntry] = useState({
     species: '',
-    width: '',
+    width: measurement ?? '',
     notes: '',
-    location: '',
+    location: coords
+      ? `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`
+      : ''
   });
-  const [imageUri, setImageUri] = useState<string | null>(null);
+
+  // default image URI if provided
+  const [imageUri, setImageUri] = useState<string | null>(defaultImageUri || null);
+  const [locLoading, setLocLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Cannot auto-fill location without permission.');
+        setLocLoading(false);
+        return;
+      }
+      const { coords } = await Location.getCurrentPositionAsync({});
+      // round to 5 decimals:
+      const locString = `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`;
+      setEntry(e => ({ ...e, location: locString }));
+      setLocLoading(false);
+    })();
+  }, []);
+
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -43,15 +73,28 @@ export default function JournalScreen() {
         return;
       }
 
-      const userRef = collection(db, `users/${user.uid}/journalEntries`);
-      await addDoc(userRef, {
-        ...entry,
-        imageUri,
-        timestamp: new Date().toISOString(),
-      });
+      //const userRef = collection(db, `users/${user.uid}/journalEntries`);
+      await addDoc(
+        collection(db, 'users', user.uid, 'journalEntries'),
+        {
+          species: entry.species,
+          width: entry.width,
+          notes: entry.notes,
+          location: entry.location,
+          imageUri,
+          timestamp: new Date().toISOString(),
+          author: userName
+        }
+      );
       Alert.alert("Success", "Journal entry saved.");
-      setEntry({ species: '', width: '', notes: '', location: '' });
-      setImageUri(null);
+      // go right back to Measure
+      navigation.reset({
+        index: 1,
+        routes: [
+          { name: 'Home' },
+          { name: 'Measure' },
+        ],
+      });
     } catch (err) {
       console.error("Error saving journal:", err);
       Alert.alert("Error", "Failed to save entry.");
@@ -65,7 +108,9 @@ export default function JournalScreen() {
     >
       <View style={styles.overlay} />
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Hunt Journal</Text>
+        <Text style={styles.title}>Hunt Journal </Text>
+
+        <Text style={styles.authorLabel}>Logged in as {userName}</Text>
 
         <TextInput
           style={styles.input}
@@ -77,7 +122,7 @@ export default function JournalScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Antler Width (in inches)"
+          placeholder="Measurement (inches)"
           placeholderTextColor="#ccc"
           keyboardType="numeric"
           value={entry.width}
@@ -86,9 +131,9 @@ export default function JournalScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Location (manual entry)"
+          placeholder="Location (auto-filled)"
           placeholderTextColor="#ccc"
-          value={entry.location}
+          value={locLoading ? 'Fetching…' : entry.location}
           onChangeText={text => setEntry({ ...entry, location: text })}
         />
 
@@ -104,7 +149,7 @@ export default function JournalScreen() {
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.imagePreview} />
           ) : (
-            <Text style={{ color: '#fff' }}>Tap to add photo of buck</Text>
+            <Text style={{ color: '#fff' }}>Tap to add photo of buck </Text>
           )}
         </TouchableOpacity>
 
@@ -123,15 +168,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   container: {
-    padding: 20,
-    paddingTop: 80,
+    padding: 10,
+    paddingTop: 50,
     alignItems: 'center',
   },
   title: {
-    fontSize: 22,
+    fontSize: 45,
     color: '#FFD700',
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 25,
   },
   input: {
     width: '90%',
@@ -156,5 +201,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 8,
+  },
+  authorLabel: {
+    color: '#fff',
+    fontSize: 16,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+    marginLeft: '5%',
   },
 });
