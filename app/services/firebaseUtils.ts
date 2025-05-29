@@ -3,7 +3,6 @@ import { collection, addDoc } from 'firebase/firestore';
 import { db, storage, auth } from './firebaseConfig';
 import * as FileSystem from 'expo-file-system';
 
-
 export const uploadTestHunt = async () => {
   const user = auth.currentUser;
   if (!user) return { success: false, message: "Not logged in" };
@@ -14,6 +13,13 @@ export const uploadTestHunt = async () => {
 
     for (const folder of hunts) {
       const folderUri = FileSystem.documentDirectory + folder + '/';
+
+      const alreadyUploaded = await FileSystem.getInfoAsync(folderUri + '.uploaded');
+      if (alreadyUploaded.exists) {
+        console.log('Skipping already uploaded folder:', folder);
+        continue;
+      }
+
       const files = (await FileSystem.readDirectoryAsync(folderUri)).filter(f => f.endsWith('.jpg'));
 
       if (files.length === 0) {
@@ -29,7 +35,9 @@ export const uploadTestHunt = async () => {
         timestamp: new Date().toISOString()
       });
 
-      console.log('Fake synced hunt with local URIs:', folder);
+      await FileSystem.writeAsStringAsync(folderUri + '.uploaded', 'true');
+
+      console.log('Synced hunt with local URIs:', folder);
     }
 
     return { success: true };

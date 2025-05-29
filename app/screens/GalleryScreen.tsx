@@ -4,12 +4,16 @@ import * as FileSystem from 'expo-file-system';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { Query, DocumentData, collection, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore';
 import { auth, db } from '../services/firebaseConfig';
+import { useRoute, RouteProp } from '@react-navigation/native';
+
 
 const screenWidth = Dimensions.get('window').width;
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Gallery'>;
+type GalleryNavProp = NativeStackNavigationProp<RootStackParamList, 'Gallery'>;
+type GalleryRouteProp = RouteProp<RootStackParamList, 'Gallery'>;
 
 export default function GalleryScreen() {
   const [huntFolders, setHuntFolders] = useState<Array<{
@@ -25,46 +29,61 @@ export default function GalleryScreen() {
   const [showRenameModal, setShowRenameModal] = useState(false);
 
   const navigation = useNavigation<NavProp>();
+  const route = useRoute<GalleryRouteProp>();
+  const { filterTags } = route.params || {};
 
   // LOAD HUNT FOLDERS
-  const loadHuntFolders = async () => {
-    try {
-      const items = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
-      const huntFolders = items.filter(name =>
-        name.startsWith('hunt_') && !name.endsWith('.jpg')
-      );
+const loadHuntFolders = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
 
-      const huntData = await Promise.all(huntFolders.map(async folder => {
-        const folderUri = FileSystem.documentDirectory + folder + '/';
-        const files = await FileSystem.readDirectoryAsync(folderUri);
-        const imageFiles = files.filter(f => f.endsWith('.jpg'));
+    const baseRef = collection(db, `users/${user.uid}/hunts`);
+    const huntsRef = Array.isArray(filterTags) && filterTags.length > 0
+      ? query(baseRef, where('tags', 'array-contains-any', filterTags))
+      : baseRef;
 
-        let title = "Untitled Hunt";
-        try {
-          const metadata = await FileSystem.readAsStringAsync(folderUri + 'metadata.json');
-          title = JSON.parse(metadata).title;
-        } catch (err) {
-          console.warn(`No title found for ${folder}`);
-        }
+    const snapshot = await getDocs(huntsRef);
 
-        return {
-          folder,
-          previewUri: folderUri + imageFiles[0],
-          photoCount: imageFiles.length,
-          date: new Date(Number(folder.split('_')[1])).toLocaleDateString(),
-          title,
-        };
-      }));
+    const firestoreFolders = snapshot.docs.map(doc => doc.data().folderName);
 
-      setHuntFolders(huntData.reverse()); // newest first
-    } catch (error) {
-      console.error('Failed to load hunts:', error);
-    }
-  };
+    const localItems = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
+    const huntFolders = localItems.filter(name =>
+      firestoreFolders.includes(name) &&
+      name.startsWith('hunt_') && !name.endsWith('.jpg')
+    );
+
+    const huntData = await Promise.all(huntFolders.map(async folder => {
+      const folderUri = FileSystem.documentDirectory + folder + '/';
+      const files = await FileSystem.readDirectoryAsync(folderUri);
+      const imageFiles = files.filter(f => f.endsWith('.jpg'));
+
+      let title = "Untitled Hunt";
+      try {
+        const metadata = await FileSystem.readAsStringAsync(folderUri + 'metadata.json');
+        title = JSON.parse(metadata).title;
+      } catch (err) {
+        console.warn(`No title found for ${folder}`);
+      }
+
+      return {
+        folder,
+        previewUri: folderUri + imageFiles[0],
+        photoCount: imageFiles.length,
+        date: new Date(Number(folder.split('_')[1])).toLocaleDateString(),
+        title,
+      };
+    }));
+
+    setHuntFolders(huntData.reverse()); // newest first
+  } catch (error) {
+    console.error('Failed to load hunts:', error);
+  }
+};
 
   useEffect(() => {
     loadHuntFolders();
-  }, []);
+  }, [filterTags]);
 
   // HANDLE: RENAME FOLDER
   const handleRename = (folder: string) => {

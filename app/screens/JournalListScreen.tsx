@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground, Button, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../services/firebaseConfig';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -9,6 +9,7 @@ import { deleteDoc, doc } from 'firebase/firestore';
 import { Image } from 'react-native';
 import { RefreshControl } from 'react-native';
 import { auth } from '../services/firebaseConfig';
+import { useRoute, RouteProp } from '@react-navigation/native';
 
 type JournalNavProp = NativeStackNavigationProp<RootStackParamList, 'JournalList'>;
 
@@ -16,24 +17,31 @@ export default function JournalListScreen() {
   const [entries, setEntries] = useState<any[]>([]);
   const navigation = useNavigation<JournalNavProp>();
   const [refreshing, setRefreshing] = useState(false);
+  type JournalRouteProp = RouteProp<RootStackParamList, 'JournalList'>;
+  const route = useRoute<JournalRouteProp>();
+  const { filterTags } = route.params || {};
 
   const fetchEntries = async () => {
     try {
       const user = auth.currentUser;
       if (!user) return;
 
-      const userRef = collection(db, `users/${user.uid}/journalEntries`);
-      const snapshot = await getDocs(userRef);
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setEntries(data.reverse()); // newest first
-    } catch (err) {
-      console.error("Failed to fetch entries", err);
-    }
-  };
+const baseRef = collection(db, `users/${user.uid}/journalEntries`);
+const userRef = Array.isArray(filterTags) && filterTags.length > 0
+  ? query(baseRef, where('tags', 'array-contains-any', filterTags))
+  : baseRef;
+
+const snapshot = await getDocs(userRef);
+    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    setEntries(data.reverse()); // newest first
+  } catch (err) {
+    console.error("Failed to fetch entries", err);
+  }
+};
 
   useEffect(() => {
     fetchEntries();
-  }, []);
+  }, [filterTags]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -54,12 +62,13 @@ export default function JournalListScreen() {
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
       <View style={styles.overlay} />
-      <ScrollView contentContainerStyle={styles.container}>
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-
+      <ScrollView contentContainerStyle={styles.container} refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         <Text style={styles.title}>Journal Entries</Text>
         <View style={styles.buttonWrapper}>
-          <Button title="New Entry" onPress={() => navigation.navigate('JournalEntryForm')} />
+          <Button title="New Entry" onPress={() => navigation.navigate('JournalEntryForm', { entryId: undefined })} />
         </View>
 
         {entries.length === 0 ? (
@@ -74,7 +83,14 @@ export default function JournalListScreen() {
                   <Text style={styles.details}>Location: {entry.location}</Text>
                   <Text style={styles.details}>Notes: {entry.notes}</Text>
                   <Text style={styles.details}>Date: {new Date(entry.timestamp).toLocaleDateString()}</Text>
-                  <Button title="Delete" color="#ff4444" onPress={() => deleteEntry(entry.id)} />
+                  <View style={styles.actionRow}>
+                    <View style={styles.actionButton}>
+                      <Button title="Edit" onPress={() => navigation.navigate('JournalEntryForm', { entryId: entry.id })} />
+                    </View>
+                    <View style={styles.actionButton}>
+                      <Button title="Delete" color="#ff4444" onPress={() => deleteEntry(entry.id)} />
+                    </View>
+                  </View>
                 </View>
                 {entry.imageUri && (
                   <Image
@@ -84,6 +100,7 @@ export default function JournalListScreen() {
                   />
                 )}
               </View>
+
             </View>
           ))
         )}
@@ -148,4 +165,13 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     backgroundColor: '#222',
   },
+  actionRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginTop: 10,
+},
+actionButton: {
+  flex: 1,
+  marginHorizontal: 2
+}
 });

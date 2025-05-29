@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ImageBackground, Alert, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { collection, addDoc } from 'firebase/firestore';
@@ -6,16 +6,51 @@ import { db } from '../services/firebaseConfig';
 import * as ImagePicker from 'expo-image-picker';
 import { Image, TouchableOpacity } from 'react-native';
 import { auth } from '../services/firebaseConfig';
+import TagInput from '../components/TagInput';
+import { useRoute, RouteProp } from '@react-navigation/native';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { RootStackParamList } from '../navigation/AppNavigator';
+
+type EntryRouteProp = RouteProp<RootStackParamList, 'JournalEntryForm'>;
 
 export default function JournalScreen() {
+  const [tags, setTags] = useState<string[]>([]);
   const navigation = useNavigation();
+  const route = useRoute<EntryRouteProp>();
+  const { entryId } = route.params || {};
+
   const [entry, setEntry] = useState({
     species: '',
     width: '',
     notes: '',
     location: '',
   });
+
   const [imageUri, setImageUri] = useState<string | null>(null);
+
+    useEffect(() => {
+    const loadEntry = async () => {
+      if (!entryId) return;
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const entryRef = doc(db, `users/${user.uid}/journalEntries`, entryId);
+      const snapshot = await getDoc(entryRef);
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        setEntry({
+          species: data.species || '',
+          width: data.width || '',
+          notes: data.notes || '',
+          location: data.location || '',
+        });
+        setImageUri(data.imageUri || null);
+        setTags(data.tags || []);
+      }
+    };
+
+    loadEntry();
+  }, [entryId]);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -31,32 +66,42 @@ export default function JournalScreen() {
   };
 
   const handleSave = async () => {
-    if (!entry.species || !imageUri) {
-      Alert.alert("Missing Info", "Please add a species name and photo.");
+  if (!entry.species || !imageUri) {
+    Alert.alert("Missing Info", "Please add a species name and photo.");
+    return;
+  }
+
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      Alert.alert("Not logged in", "Please log in to save journal entries.");
       return;
     }
 
-    try {
-      const user = auth.currentUser;
-      if (!user) {
-        Alert.alert("Not logged in", "Please log in to save journal entries.");
-        return;
-      }
+    const userRef = collection(db, `users/${user.uid}/journalEntries`);
+    const payload = {
+      ...entry,
+      imageUri,
+      timestamp: new Date().toISOString(),
+      tags,
+    };
 
-      const userRef = collection(db, `users/${user.uid}/journalEntries`);
-      await addDoc(userRef, {
-        ...entry,
-        imageUri,
-        timestamp: new Date().toISOString(),
-      });
-      Alert.alert("Success", "Journal entry saved.");
-      setEntry({ species: '', width: '', notes: '', location: '' });
-      setImageUri(null);
-    } catch (err) {
-      console.error("Error saving journal:", err);
-      Alert.alert("Error", "Failed to save entry.");
+    if (entryId) {
+      await setDoc(doc(userRef, entryId), payload); // update
+    } else {
+      await addDoc(userRef, payload); // new
     }
-  };
+
+    Alert.alert("Success", "Journal entry saved.");
+    setEntry({ species: '', width: '', notes: '', location: '' });
+    setImageUri(null);
+    setTags([]);
+    navigation.goBack();
+  } catch (err) {
+    console.error("Error saving journal:", err);
+    Alert.alert("Error", "Failed to save entry.");
+  }
+};
 
   return (
     <ImageBackground
@@ -108,6 +153,7 @@ export default function JournalScreen() {
           )}
         </TouchableOpacity>
 
+          <TagInput tags={tags} setTags={setTags} placeholder="Add tags like 'rifle' or 'morning'" />
         <Button title="Save Entry" onPress={handleSave} />
       </ScrollView>
     </ImageBackground>

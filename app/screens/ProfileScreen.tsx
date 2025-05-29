@@ -11,6 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { auth } from '../services/firebaseConfig';
+import * as FileSystem from 'expo-file-system';
 
 const ProfileScreen = () => {
   const [status, setStatus] = useState<string>('');
@@ -20,12 +21,17 @@ const ProfileScreen = () => {
   const [journalCount, setJournalCount] = useState<number>(0);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [name, setName] = useState<string>('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [hasUnsyncedHunts, setHasUnsyncedHunts] = useState<boolean>(false);
 
   useEffect(() => {
     AsyncStorage.getItem('userEmail').then(storedEmail => {
       if (storedEmail) {
         setEmail(storedEmail);
         fetchStats(storedEmail);
+        loadTags();
+        checkUnsyncedHunts();
       }
     });
   }, []);
@@ -39,36 +45,67 @@ const ProfileScreen = () => {
 
     const journalSnapshot = await getDocs(collection(db, `users/${user.uid}/journalEntries`));
     setJournalCount(journalSnapshot.size);
-
-    const profileDoc = await getDoc(doc(db, `users/${user.uid}/profile`));
-    if (profileDoc.exists()) {
-      const profileData = profileDoc.data();
-      setName(profileData.name || '');
-    }
   };
 
-  const handleUpload = async () => {
-    setStatus('Uploading test hunt…');
-    setLoading(true);
+const handleUpload = async () => {
+  setStatus('Uploading test hunt…');
+  setLoading(true);
 
+  try {
     const result = await uploadTestHunt();
-      if (result.success) {
-        setStatus(`Uploaded`);
-      if (email) {
-        await fetchStats(email);
-      } else {
-        const storedEmail = await AsyncStorage.getItem('userEmail');
-        if (storedEmail) {
-          setEmail(storedEmail);
-          await fetchStats(storedEmail);
-        }
-      }
+    if (result.success) {
+      setStatus(`Uploaded`);
+      await fetchStats(email || (await AsyncStorage.getItem('userEmail')) || '');
+      await checkUnsyncedHunts();
     } else {
       setStatus('Upload failed. See console.');
     }
+  } catch (err) {
+    console.error(err);
+    setStatus('An error occurred.');
+  } finally {
+    setLoading(false); 
+  }
+};
 
-    setLoading(false);
-  };
+  const loadTags = async () => {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const tagSet = new Set<string>();
+
+  const huntSnapshot = await getDocs(collection(db, `users/${user.uid}/hunts`));
+  huntSnapshot.forEach(doc => {
+    const data = doc.data();
+    if (Array.isArray(data.tags) && data.tags.length > 0) {
+      tagSet.add(data.tags[0]); 
+    }
+  });
+
+  const journalSnapshot = await getDocs(collection(db, `users/${user.uid}/journalEntries`));
+  journalSnapshot.forEach(doc => {
+    const data = doc.data();
+     if (Array.isArray(data.tags) && data.tags.length > 0) {
+      tagSet.add(data.tags[0]); 
+    }
+  });
+
+  setAvailableTags(Array.from(tagSet));
+};
+
+const checkUnsyncedHunts = async () => {
+  const folders = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
+  const hunts = folders.filter(name => name.startsWith('hunt_'));
+
+  for (const folder of hunts) {
+    const flag = await FileSystem.getInfoAsync(FileSystem.documentDirectory + folder + '/.uploaded');
+    if (!flag.exists) {
+      setHasUnsyncedHunts(true);
+      return;
+    }
+  }
+  setHasUnsyncedHunts(false);
+};
 
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
@@ -83,19 +120,71 @@ const ProfileScreen = () => {
           <Text style={styles.stat}>Journal Entries: {journalCount}</Text>
         </View>
 
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 20 }}>
+          {availableTags.map(tag => {
+            const isSelected = selectedTags.includes(tag);
+            return (
+              <TouchableOpacity key={tag} style={{
+                  backgroundColor: isSelected ? '#FFD700' : '#444',
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 20,
+                  margin: 4,
+                }}
+                onPress={() => {
+                  if (isSelected) {
+                    setSelectedTags(prev => prev.filter(t => t !== tag));
+                  } else {
+                    setSelectedTags(prev => [...prev, tag]);
+                  }
+                }}
+              >
+                <Text style={{ color: isSelected ? '#000' : '#fff' }}>{tag}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
         <View style={styles.buttonGroup}>
-          <TouchableOpacity style={styles.menuButton} onPress={() => navigation.navigate('JournalList')}>
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.navigate('JournalList', { filterTags: selectedTags })}
+          >
             <Text style={styles.buttonText}>View Journal</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuButton} onPress={() => navigation.navigate('Gallery')}>
+
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.navigate('Gallery', { filterTags: selectedTags })}
+          >
             <Text style={styles.buttonText}>View Hunt Gallery</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.bottomButtons}>
-          <Button title="Sync to Cloud" onPress={handleUpload} color="#FFA500" disabled={loading} />
+          <Button title="Sync to Cloud" onPress={handleUpload} color="#FFA500" disabled={loading || !hasUnsyncedHunts} />
           <View style={{ marginVertical: 8 }} />
           <Button title="Edit Profile" onPress={() => Alert.alert("Coming Soon", "Edit Profile is not available yet.")} />
+            <Button
+  title="Reset Local Hunts"
+  color="#ff4444"
+  onPress={async () => {
+    try {
+      const files = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
+      const huntFolders = files.filter(name => name.startsWith('hunt_'));
+
+      for (const folder of huntFolders) {
+        const path = FileSystem.documentDirectory + folder + '/';
+        await FileSystem.deleteAsync(path, { idempotent: true });
+      }
+
+      await AsyncStorage.clear(); // This is fine — just don't delete the backing folder manually
+      Alert.alert("Reset complete", "All local hunt folders and app data have been cleared.");
+    } catch (err) {
+      console.error('Failed to wipe device:', err);
+      Alert.alert("Error", "Failed to reset hunt data.");
+    }
+  }}
+/>
         </View>
 
         {status ? <Text style={styles.status}>{status}</Text> : null}

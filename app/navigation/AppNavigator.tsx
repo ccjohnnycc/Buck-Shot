@@ -20,10 +20,10 @@ export type RootStackParamList = {
   Signup: undefined;
   AuthLanding: undefined;
   Calibration: undefined;
-  Gallery: undefined;
+  Gallery: { filterTags?: string[] };
   HuntDetail: { folderName: string };
-  JournalList: undefined;
-  JournalEntryForm: undefined;
+  JournalList: { filterTags?: string[] };
+  JournalEntryForm: { entryId?: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
