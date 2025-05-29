@@ -41,17 +41,17 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator initialRouteName="AuthLanding"
         screenOptions={commonHeaderOptions}>
-        <Stack.Screen name="Home" component={HomeScreen} options={{ headerBackVisible: false }} />
-        <Stack.Screen name="Profile" component={ProfileScreen} />
-        <Stack.Screen name="Measure" component={MeasureScreen} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Measure" component={MeasureScreen} options={{ headerShown: false }} />
         <Stack.Screen name="AuthLanding" component={AuthScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Signup" component={SignupScreen} />
-        <Stack.Screen name="Calibration" component={CalibrationScreen} />
-        <Stack.Screen name="Gallery" component={GalleryScreen} />
-        <Stack.Screen name="HuntDetail" component={HuntDetailScreen} options={{ title: 'Hunt Details' }} />
-        <Stack.Screen name="JournalList" component={JournalListScreen} options={{ title: 'Hunt Journal' }} />
-        <Stack.Screen name="JournalEntryForm" component={JournalEntryForm} options={{ title: 'New Entry' }} />
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Calibration" component={CalibrationScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Gallery" component={GalleryScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="HuntDetail" component={HuntDetailScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="JournalList" component={JournalListScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="JournalEntryForm" component={JournalEntryForm} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

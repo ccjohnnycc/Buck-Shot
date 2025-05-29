@@ -40,6 +40,7 @@ npm install
 expo install react-native-svg
 npx expo install expo-camera
 npm install @react-native-community/slider
+ npm install react-native-view-shot
 
 4. Run the app
 npx expo start

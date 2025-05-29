@@ -120,7 +120,7 @@ const validFolders = filteredHuntFolders.filter(Boolean) as string[];
   // HANDLE: DELETE FOLDER
   const handleDelete = async (folder: string) => {
     Alert.alert(
-      "Delete Hunt",
+      "Delete Hunt" ,
       "Are you sure you want to delete this hunt and all its photos?",
       [
         { text: "Cancel", style: "cancel" },
@@ -202,7 +202,7 @@ const validFolders = filteredHuntFolders.filter(Boolean) as string[];
                     <Text style={[styles.imageLabel, { textDecorationLine: 'underline' }]}>Rename</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDelete(hunt.folder)}>
-                    <Text style={[styles.imageLabel, { textDecorationLine: 'underline', color: '#ff4444' }]}>Delete</Text>
+                    <Text style={[styles.imageLabel, { textDecorationLine: 'underline', color: '#ff4444' }]}>Delete </Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => {
                     setEditingTagsFolder(hunt.folder);

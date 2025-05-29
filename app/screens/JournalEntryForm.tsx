@@ -1,20 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ImageBackground, Alert, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '../services/firebaseConfig';
+import { View, Text, TextInput, Button, StyleSheet, ImageBackground, Alert, ScrollView, Image, TouchableOpacity } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Image, TouchableOpacity } from 'react-native';
-import { auth } from '../services/firebaseConfig';
-import TagInput from '../components/TagInput';
+import * as Location from 'expo-location';
+import { useNavigation } from '@react-navigation/native';
 import { useRoute, RouteProp } from '@react-navigation/native';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, setDoc } from 'firebase/firestore';
+import { db, auth } from '../services/firebaseConfig';
+import TagInput from '../components/TagInput';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type EntryRouteProp = RouteProp<RootStackParamList, 'JournalEntryForm'>;
 
 export default function JournalScreen() {
   const [tags, setTags] = useState<string[]>([]);
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [locLoading, setLocLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState<string>('Guest');
+
   const navigation = useNavigation();
   const route = useRoute<EntryRouteProp>();
   const { entryId } = route.params || {};
@@ -26,13 +29,29 @@ export default function JournalScreen() {
     location: '',
   });
 
-  const [imageUri, setImageUri] = useState<string | null>(null);
-
-    useEffect(() => {
+  // Load existing entry if editing
+  useEffect(() => {
     const loadEntry = async () => {
-      if (!entryId) return;
       const user = auth.currentUser;
       if (!user) return;
+
+      setUserEmail(user.email || 'Unknown');
+
+      if (!entryId) {
+        // Get location for new entries
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status !== 'granted') throw new Error('Permission denied');
+          const coords = await Location.getCurrentPositionAsync();
+          const loc = `${coords.coords.latitude.toFixed(5)}, ${coords.coords.longitude.toFixed(5)}`;
+          setEntry(prev => ({ ...prev, location: loc }));
+        } catch (err) {
+          console.warn('Location error:', err);
+        } finally {
+          setLocLoading(false);
+        }
+        return;
+      }
 
       const entryRef = doc(db, `users/${user.uid}/journalEntries`, entryId);
       const snapshot = await getDoc(entryRef);
@@ -47,6 +66,7 @@ export default function JournalScreen() {
         setImageUri(data.imageUri || null);
         setTags(data.tags || []);
       }
+      setLocLoading(false);
     };
 
     loadEntry();
@@ -112,6 +132,8 @@ export default function JournalScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Hunt Journal</Text>
 
+        <Text style={styles.authorLabel}>Logged in as {userEmail}</Text>
+
         <TextInput
           style={styles.input}
           placeholder="Species (e.g. White-tailed Deer)"
@@ -131,9 +153,9 @@ export default function JournalScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Location (manual entry)"
+          placeholder="Location (auto-filled)"
           placeholderTextColor="#ccc"
-          value={entry.location}
+          value={locLoading ? 'Fetching…' : entry.location}
           onChangeText={text => setEntry({ ...entry, location: text })}
         />
 
@@ -149,7 +171,7 @@ export default function JournalScreen() {
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.imagePreview} />
           ) : (
-            <Text style={{ color: '#fff' }}>Tap to add photo of buck</Text>
+            <Text style={{ color: '#fff' }}>Tap to add photo of buck </Text>
           )}
         </TouchableOpacity>
 
@@ -169,15 +191,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   container: {
-    padding: 20,
-    paddingTop: 80,
+    padding: 10,
+    paddingTop: 50,
     alignItems: 'center',
   },
   title: {
-    fontSize: 22,
+    fontSize: 45,
     color: '#FFD700',
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 25,
   },
   input: {
     width: '90%',
@@ -202,5 +224,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 8,
+  },
+  authorLabel: {
+    color: '#fff',
+    fontSize: 16,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+    marginLeft: '5%',
   },
 });

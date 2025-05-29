@@ -7,6 +7,7 @@ import {
   Button,
   Alert,
   Image,
+  TouchableOpacity,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -108,8 +109,9 @@ export default function CalibrationScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Instruction */}
-      <InstructionBanner message="Drag both crosshairs to the ends of a credit card to calibrate." />
+      {/* Instruction banner to guide the user */}
+      <InstructionBanner message="Drag both crosshairs to the ends of a credit card to calibrate."
+        message2="Hold camera 3 feet or 36 inches away from your card." autoHideDuration={6000} />
 
       {/* Camera / Preview container */}
       <View style={styles.camera}>
@@ -194,10 +196,10 @@ export default function CalibrationScreen({ navigation }: any) {
           )}
         </View>
 
-        {/* Restart everything */}
-        <View style={styles.restartButton}>
-          <Button title="Restart" onPress={clearAll} />
-        </View>
+        {/* Restart button */}
+        <TouchableOpacity style={styles.restartButton} onPress={clearAll}>
+          <Text style={styles.restartText}>Restart </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -231,11 +233,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   restartButton: {
-    position: 'absolute',
-    marginTop: 100,
-    right: 20,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 10,
-    borderRadius: 5,
-  },
+        position: 'absolute',
+        marginTop: 100,
+        right: 20,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        padding: 10,
+        borderRadius: 5,
+    },
+    restartText: {
+        color: '#fff',
+        textAlign: 'center',
+    },
 });
