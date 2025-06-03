@@ -7,7 +7,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '../services/firebaseConfig';
 
-type HomeNavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+type HomeNavProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
 export default function HomeScreen() {
     const homeScreenImage = require('../../assets/background_image.png');
