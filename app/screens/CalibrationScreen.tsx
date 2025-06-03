@@ -96,7 +96,7 @@ export default function CalibrationScreen({ navigation }: any) {
       'Calibration Saved',
       'You can now measure objects at different distances.'
     );
-    navigation.navigate('Measure');
+    navigation.navigate('Main', { screen: 'Measure' });
   };
 
   /* reset stored calibration entirely */
