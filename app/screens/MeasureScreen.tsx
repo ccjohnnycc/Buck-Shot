@@ -22,6 +22,7 @@ const MARKER_SIZE = 40;
 
 export default function MeasureScreen({ navigation }: any) {
     const [hasSaved, setHasSaved] = useState(false);
+    const [cameraSize, setCameraSize] = useState({ width: 0, height: 0 });
 
     const [facing, setFacing] = useState<CameraType>('back');
     const [permission, requestPermission] = useCameraPermissions();
@@ -42,19 +43,32 @@ export default function MeasureScreen({ navigation }: any) {
     const containerRef = useRef<View>(null);
     const [saveJournal, setSaveJournal] = useState(false);
 
-    React.useEffect(() => {
+    useEffect(() => {
+        if (!isFocused) return;
+
         const loadCalibration = async () => {
             const data = await AsyncStorage.getItem('calibration');
             if (data) {
                 setCalibration(JSON.parse(data));
             } else {
-                Alert.alert("Calibration Required", "Please calibrate before measuring.", [
-                    { text: "Go to Calibrate", onPress: () => navigation.navigate('Calibration') }
-                ]);
+                Alert.alert(
+                    'Calibration Required',
+                    'Please calibrate before measuring.',
+                    [
+                        {
+                            text: 'Go to Calibrate',
+                            onPress: () => {
+                                // Jump into the Calibration screen (nested under stack)
+                                navigation.navigate('Calibration');
+                            },
+                        },
+                    ]
+                );
             }
         };
+
         loadCalibration();
-    }, []);
+    }, [isFocused, navigation]);
 
     /* CAMERA PERMISSION */
     if (!permission) {
@@ -128,7 +142,7 @@ export default function MeasureScreen({ navigation }: any) {
     // Save logic based on user selection
     const handleConfirmSave = async () => {
 
-        if (hasSaved) return; 
+        if (hasSaved) return;
         setHasSaved(true);
         try {
             const folder = await ensureFolder();
@@ -167,7 +181,7 @@ export default function MeasureScreen({ navigation }: any) {
 
             if (saveJournal) {
                 setHasSaved(true);
-                
+
                 let coords = null;
                 const { status } = await Location.requestForegroundPermissionsAsync();
                 if (status === 'granted') {
@@ -195,7 +209,7 @@ export default function MeasureScreen({ navigation }: any) {
         } catch (err) {
             console.error('Save error:', err);
             Alert.alert('Failed to save photo');
-        } 
+        }
     };
 
     return (
@@ -203,10 +217,18 @@ export default function MeasureScreen({ navigation }: any) {
 
             {/* Instruction banner to guide the user */}
             <InstructionBanner message="Drag and drop two markers to measure distance."
-                message2="Hold camera 3 feet or 36 inches away from your card." autoHideDuration={6000} />
+                message2="Adjust slider to match your distance to the object being measured." autoHideDuration={6000} />
 
             {/* Container for the camera preview and tap overlay */}
-            <View style={styles.camera} ref={containerRef} collapsable={false}>
+            <View
+                style={styles.camera}
+                ref={containerRef}
+                collapsable={false}
+                onLayout={evt => {
+                    const { width, height } = evt.nativeEvent.layout;
+                    setCameraSize({ width, height });
+                }}
+            >
 
                 {/* Live camera feed */}
                 {capturedUri ? (
@@ -227,6 +249,8 @@ export default function MeasureScreen({ navigation }: any) {
 
                 {marker1 && (
                     <DraggableCrosshair
+                        parentWidth={cameraSize.width}
+                        parentHeight={cameraSize.height}
                         // force rerender when cleared
                         key={`marker1-${marker1?.x}-${marker1?.y}`}
                         initialX={marker1.x}
@@ -237,6 +261,8 @@ export default function MeasureScreen({ navigation }: any) {
                 )}
                 {marker2 && (
                     <DraggableCrosshair
+                        parentWidth={cameraSize.width}
+                        parentHeight={cameraSize.height}
                         // force rerender when cleared
                         key={`marker2-${marker2?.x}-${marker2?.y}`}
                         initialX={marker2.x}
@@ -248,6 +274,8 @@ export default function MeasureScreen({ navigation }: any) {
 
                 {!marker1 && (
                     <DraggableCrosshair
+                        parentWidth={cameraSize.width}
+                        parentHeight={cameraSize.height}
                         initialX={width / 2 - 60}
                         initialY={300}
                         onDragEnd={setMarker1}
@@ -256,6 +284,8 @@ export default function MeasureScreen({ navigation }: any) {
                 )}
                 {!marker2 && marker1 && (
                     <DraggableCrosshair
+                        parentWidth={cameraSize.width}
+                        parentHeight={cameraSize.height}
                         initialX={width / 2 + 60}
                         initialY={300}
                         onDragEnd={setMarker2}
