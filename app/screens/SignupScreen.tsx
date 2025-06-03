@@ -34,7 +34,7 @@ export default function SignupScreen() {
       });
 
       await AsyncStorage.setItem('userEmail', user.email || '');
-      navigation.navigate('Home');
+      navigation.navigate('Main');
     } catch (err: any) {
       Alert.alert('Signup failed', err.message);
     }
@@ -42,7 +42,7 @@ export default function SignupScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sign up</Text>
+      <Text style={styles.title}>Sign up </Text>
       <TextInput style={styles.input} placeholder="Name" value={name} onChangeText={setName} />
       <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} />
       <TextInput style={styles.input} placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} />

@@ -24,7 +24,7 @@ useEffect(() => {
       await AsyncStorage.setItem('userEmail', user.email || '');
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Home' }],
+        routes: [{ name: 'Main' }],
       });
     } else {
       console.log('Auth state changed: Not logged in');
@@ -54,7 +54,7 @@ useEffect(() => {
 
         <Text style={styles.orText}>OR </Text>
 
-        <TouchableOpacity style={styles.guestButton} onPress={() => navigation.navigate('Home')}>
+        <TouchableOpacity style={styles.guestButton} onPress={() => navigation.navigate('Main')}>
           <Text style={styles.guestText}>Continue as guest </Text>
         </TouchableOpacity>
 

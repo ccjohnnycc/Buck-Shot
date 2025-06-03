@@ -26,7 +26,7 @@ export default function LoginScreen() {
   const user = userCred.user;
 
   await AsyncStorage.setItem('userEmail', user.email || '');
-  navigation.navigate('Home');
+  navigation.replace('Main');
 } catch (err: any) {
   Alert.alert('Login failed', err.message);
 }
@@ -34,7 +34,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sign In</Text>
+      <Text style={styles.title}>Sign In </Text>
       <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} />
       <TextInput style={styles.input} placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} />
       <Button title="Login" onPress={handleLogin} />

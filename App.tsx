@@ -1,4 +1,3 @@
-
 import { StatusBar } from 'expo-status-bar';
 import AppNavigator from './app/navigation/AppNavigator';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
