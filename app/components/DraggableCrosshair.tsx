@@ -28,25 +28,29 @@ const clampY = (rawY: number) =>
     Math.min(rawY, screenHeight - MARKER_SIZE - BOTTOM_INSET)
   );
 
-  // Size constants for the draggable marker and the hover peek
+// Size constants for the draggable marker and the hover peek
 const MARKER_SIZE = 40;
 const HOVER_SIZE = 60;
 const HOVER_RADIUS = HOVER_SIZE / 2;
 
 export default function DraggableCrosshair({
+  parentWidth,
+  parentHeight,
   initialX = 100,
   initialY = 100,
   onDragEnd,
   capturedUri,
 }: {
+  parentWidth: number;
+  parentHeight: number;
   initialX?: number;
   initialY?: number;
   onDragEnd?: (coords: { x: number; y: number }) => void;
   capturedUri?: string | null;
 }) {
-   // Animated value to track marker translation
+  // Animated value to track marker translation
   const translate = useRef(new Animated.ValueXY()).current;
-   // Keep track of the last stable position after drag end
+  // Keep track of the last stable position after drag end
   const lastOffset = useRef({ x: initialX, y: initialY });
 
   // State flags
@@ -61,7 +65,7 @@ export default function DraggableCrosshair({
     setDragPosition({ x: initialX, y: initialY });
   }, [initialX, initialY]);
 
-   // PanResponder to handle touch & drag gestures
+  // PanResponder to handle touch & drag gestures
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -73,8 +77,8 @@ export default function DraggableCrosshair({
         const rawX = lastOffset.current.x + gs.dx;
         const rawY = lastOffset.current.y + gs.dy;
 
-        const newX = clamp(rawX, 0, screenWidth - MARKER_SIZE);
-        const newY = clampY(rawY);
+        const newX = clamp(rawX, 0, parentWidth - MARKER_SIZE);
+        const newY = clamp(rawY, 0, parentHeight - MARKER_SIZE);
 
         setDragPosition({ x: newX, y: newY });
         translate.setValue({ x: newX - lastOffset.current.x, y: newY - lastOffset.current.y });
@@ -84,8 +88,8 @@ export default function DraggableCrosshair({
         const rawX = lastOffset.current.x + gs.dx;
         const rawY = lastOffset.current.y + gs.dy;
 
-        const newX = clamp(rawX, 0, screenWidth - MARKER_SIZE);
-        const newY = clampY(rawY);
+        const newX = clamp(rawX, 0, parentWidth - MARKER_SIZE);
+        const newY = clamp(rawY, 0, parentHeight - MARKER_SIZE);
 
         lastOffset.current = { x: newX, y: newY };
         translate.flattenOffset();
@@ -126,8 +130,8 @@ export default function DraggableCrosshair({
           <Image
             source={{ uri: capturedUri }}
             style={{
-              width: screenWidth,
-              height: screenHeight,
+              width: parentWidth,
+              height: parentHeight,
               transform: [
                 { translateX: -dragPosition.x + HOVER_RADIUS - MARKER_SIZE / 2 },
                 { translateY: -dragPosition.y + HOVER_RADIUS - MARKER_SIZE / 2 },
