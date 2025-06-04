@@ -137,31 +137,27 @@ export default function CalibrationScreen({ navigation }: any) {
             initialX={marker1.x}
             initialY={marker1.y}
             onDragEnd={setMarker1}
-            capturedUri={capturedUri}
-          />
+            capturedUri={capturedUri} parentWidth={0} parentHeight={0}          />
         ) : (
           <DraggableCrosshair
-            initialX={width / 2 - 60}
-            initialY={200}
-            onDragEnd={setMarker1}
-            capturedUri={capturedUri}
-          />
+              initialX={width / 2 - 60}
+              initialY={200}
+              onDragEnd={setMarker1}
+              capturedUri={capturedUri} parentWidth={0} parentHeight={0}          />
         )}
         {marker2 ? (
           <DraggableCrosshair
             initialX={marker2.x}
             initialY={marker2.y}
             onDragEnd={setMarker2}
-            capturedUri={capturedUri}
-          />
+            capturedUri={capturedUri} parentWidth={0} parentHeight={0}          />
         ) : (
           marker1 && (
             <DraggableCrosshair
-              initialX={width / 2 + 60}
-              initialY={200}
-              onDragEnd={setMarker2}
-              capturedUri={capturedUri}
-            />
+                initialX={width / 2 + 60}
+                initialY={200}
+                onDragEnd={setMarker2}
+                capturedUri={capturedUri} parentWidth={0} parentHeight={0}            />
           )
         )}
 

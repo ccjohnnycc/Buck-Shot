@@ -56,10 +56,10 @@ export default function AppNavigator() {
         <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
         <Stack.Screen name="Calibration" component={CalibrationScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Gallery" component={GalleryScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Gallery" component={GalleryScreen}/>
         <Stack.Screen name="HuntDetail" component={HuntDetailScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="JournalList" component={JournalListScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="JournalEntryForm" component={JournalEntryForm} options={{ headerShown: false }} />
+        <Stack.Screen name="JournalList" component={JournalListScreen} />
+        <Stack.Screen name="JournalEntryForm" component={JournalEntryForm} />
         {/*<Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Measure" component={MeasureScreen} options={{ headerShown: false }} />*/}
       </Stack.Navigator>
