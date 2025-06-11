@@ -12,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { auth } from '../services/firebaseConfig';
 import * as FileSystem from 'expo-file-system';
+import { signOut } from 'firebase/auth';
 
 const ProfileScreen = () => {
   const [status, setStatus] = useState<string>('');
@@ -47,65 +48,83 @@ const ProfileScreen = () => {
     setJournalCount(journalSnapshot.size);
   };
 
-const handleUpload = async () => {
-  setStatus('Uploading test hunt…');
-  setLoading(true);
-
-  try {
-    const result = await uploadTestHunt();
-    if (result.success) {
-      setStatus(`Uploaded`);
-      await fetchStats(email || (await AsyncStorage.getItem('userEmail')) || '');
-      await checkUnsyncedHunts();
-    } else {
-      setStatus('Upload failed. See console.');
+  //log user out and reset navigation
+  const handleLogout = async () => {
+    try {
+      // Sign out Firebase
+      await signOut(auth);
+      // Clear stored email
+      await AsyncStorage.removeItem('userEmail');
+      // Reset navigation to AuthLanding
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'AuthLanding' }],
+      });
+    } catch (err: any) {
+      Alert.alert('Logout failed', err.message);
     }
-  } catch (err) {
-    console.error(err);
-    setStatus('An error occurred.');
-  } finally {
-    setLoading(false); 
-  }
-};
+  };
+
+
+  const handleUpload = async () => {
+    setStatus('Uploading test hunt…');
+    setLoading(true);
+
+    try {
+      const result = await uploadTestHunt();
+      if (result.success) {
+        setStatus(`Uploaded`);
+        await fetchStats(email || (await AsyncStorage.getItem('userEmail')) || '');
+        await checkUnsyncedHunts();
+      } else {
+        setStatus('Upload failed. See console.');
+      }
+    } catch (err) {
+      console.error(err);
+      setStatus('An error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadTags = async () => {
-  const user = auth.currentUser;
-  if (!user) return;
+    const user = auth.currentUser;
+    if (!user) return;
 
-  const tagSet = new Set<string>();
+    const tagSet = new Set<string>();
 
-  const huntSnapshot = await getDocs(collection(db, `users/${user.uid}/hunts`));
-  huntSnapshot.forEach(doc => {
-    const data = doc.data();
-    if (Array.isArray(data.tags) && data.tags.length > 0) {
-      tagSet.add(data.tags[0]); 
+    const huntSnapshot = await getDocs(collection(db, `users/${user.uid}/hunts`));
+    huntSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (Array.isArray(data.tags) && data.tags.length > 0) {
+        tagSet.add(data.tags[0]);
+      }
+    });
+
+    const journalSnapshot = await getDocs(collection(db, `users/${user.uid}/journalEntries`));
+    journalSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (Array.isArray(data.tags) && data.tags.length > 0) {
+        tagSet.add(data.tags[0]);
+      }
+    });
+
+    setAvailableTags(Array.from(tagSet));
+  };
+
+  const checkUnsyncedHunts = async () => {
+    const folders = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
+    const hunts = folders.filter(name => name.startsWith('hunt_'));
+
+    for (const folder of hunts) {
+      const flag = await FileSystem.getInfoAsync(FileSystem.documentDirectory + folder + '/.uploaded');
+      if (!flag.exists) {
+        setHasUnsyncedHunts(true);
+        return;
+      }
     }
-  });
-
-  const journalSnapshot = await getDocs(collection(db, `users/${user.uid}/journalEntries`));
-  journalSnapshot.forEach(doc => {
-    const data = doc.data();
-     if (Array.isArray(data.tags) && data.tags.length > 0) {
-      tagSet.add(data.tags[0]); 
-    }
-  });
-
-  setAvailableTags(Array.from(tagSet));
-};
-
-const checkUnsyncedHunts = async () => {
-  const folders = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
-  const hunts = folders.filter(name => name.startsWith('hunt_'));
-
-  for (const folder of hunts) {
-    const flag = await FileSystem.getInfoAsync(FileSystem.documentDirectory + folder + '/.uploaded');
-    if (!flag.exists) {
-      setHasUnsyncedHunts(true);
-      return;
-    }
-  }
-  setHasUnsyncedHunts(false);
-};
+    setHasUnsyncedHunts(false);
+  };
 
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
@@ -125,12 +144,12 @@ const checkUnsyncedHunts = async () => {
             const isSelected = selectedTags.includes(tag);
             return (
               <TouchableOpacity key={tag} style={{
-                  backgroundColor: isSelected ? '#FFD700' : '#444',
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 20,
-                  margin: 4,
-                }}
+                backgroundColor: isSelected ? '#FFD700' : '#444',
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 20,
+                margin: 4,
+              }}
                 onPress={() => {
                   if (isSelected) {
                     setSelectedTags(prev => prev.filter(t => t !== tag));
@@ -161,10 +180,25 @@ const checkUnsyncedHunts = async () => {
         </View>
 
         <View style={styles.bottomButtons}>
-          <Button title="Sync to Cloud" onPress={handleUpload} color="#FFA500" disabled={loading || !hasUnsyncedHunts} />
+          <Button
+            title="Sync to Cloud"
+            onPress={handleUpload}
+            color="#FFA500"
+            disabled={loading || !hasUnsyncedHunts}
+          />
           <View style={{ marginVertical: 8 }} />
-          <Button title="Edit Profile" onPress={() => Alert.alert("Coming Soon", "Edit Profile is not available yet.")} />
+          <Button
+            title="Edit Profile"
+            onPress={() => Alert.alert('Coming Soon', 'Edit Profile is not available yet.')}
+          />
+          <View style={{ marginVertical: 8 }} />
+          <Button
+            title="Logout"
+            onPress={handleLogout}
+            color="#ff4444"
+          />
         </View>
+
         {status ? <Text style={styles.status}>{status}</Text> : null}
         {loading && <ActivityIndicator size="large" color="#FFD700" />}
       </View>
