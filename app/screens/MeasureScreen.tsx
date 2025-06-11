@@ -11,6 +11,7 @@ import {
   Modal,
   Switch,
   findNodeHandle,
+  BackHandler
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import Slider from '@react-native-community/slider';
@@ -19,7 +20,7 @@ import { convertPixelsToInches } from '../utils/measurement';
 import * as FileSystem from 'expo-file-system';
 import { captureRef } from 'react-native-view-shot';
 import type { CameraView as CameraViewRef } from 'expo-camera';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useFocusEffect } from '@react-navigation/native';
 import InstructionBanner from '../components/InstructionBanner';
 import DraggableCrosshair from '../components/DraggableCrosshair';
 import * as Location from 'expo-location';
@@ -54,6 +55,30 @@ export default function MeasureScreen({ navigation }: any) {
   const [saveUX, setSaveUX] = useState(false);
   const [saveJournal, setSaveJournal] = useState(false);
   const containerRef = useRef<View>(null);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        Alert.alert(
+          'Confirm Exit',
+          'Are you sure you want to exit the app?',
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => {} },
+            { text: 'Yes', onPress: () => BackHandler.exitApp() },
+          ],
+          { cancelable: true }
+        );
+        // Return true to stop default back behavior (app exit)
+        return true;
+      };
+
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => {
+        backHandler.remove();
+      };
+     }, [])
+  );
 
   // When screen regains focus, clear everything if there was a previous photo/markers
   useEffect(() => {
