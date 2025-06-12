@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { View, Image, ScrollView, StyleSheet, Dimensions, Text, ImageBackground, Alert, Button } from 'react-native';
 import * as FileSystem from 'expo-file-system';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { TouchableOpacity } from 'react-native';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function HuntDetailScreen() {
   const { folderName } = useRoute().params as { folderName: string };
+  const navigation = useNavigation<any>()
   const [photos, setPhotos] = useState<string[]>([]);
 
   const handleDeletePhoto = (uriToDelete: string) => {
@@ -54,15 +56,21 @@ export default function HuntDetailScreen() {
             key={index}
             renderRightActions={() => renderRightActions(() => handleDeletePhoto(uri))}
           >
-            <View style={styles.photoCard}>
-              <Image source={{ uri }} style={styles.image} />
-            </View>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('PhotoViewer', { folderName, startIndex: index })}
+              activeOpacity={0.85}
+            >
+              <View style={styles.photoCard}>
+                <Image source={{ uri }} style={styles.image} />
+              </View>
+            </TouchableOpacity>
           </Swipeable>
         ))}
       </ScrollView>
     </ImageBackground>
   );
 }
+
 
 const renderRightActions = (onDelete: () => void) => (
   <View style={styles.swipeDelete}>

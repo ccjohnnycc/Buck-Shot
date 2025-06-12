@@ -5,10 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 import MeasureScreen from '../screens/MeasureScreen';
 import WeatherScreen from '../screens/WeatherScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import MapScreen from '../screens/MapScreen';
 
 type TabParamList = {
     Measure: undefined;
     Weather: undefined;
+    Map: undefined; 
     Profile: undefined;
 };
 
@@ -29,6 +31,9 @@ export default function MainTabs() {
                     } else if (route.name === 'Profile') {
                         iconName = 'person-circle-outline';
                     }
+                    else if (route.name === 'Map') {
+                        iconName = 'map-outline';
+                    }
 
                     return <Ionicons name={iconName} size={size} color={color} />;
                 },
@@ -38,6 +43,7 @@ export default function MainTabs() {
         >
             <Tab.Screen name="Measure" component={MeasureScreen} />
             <Tab.Screen name="Weather" component={WeatherScreen} />
+            <Tab.Screen name="Map" component={MapScreen} />   
             <Tab.Screen name="Profile" component={ProfileScreen} />
         </Tab.Navigator>
     );
