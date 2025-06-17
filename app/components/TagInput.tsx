@@ -4,7 +4,7 @@ import { Feather } from '@expo/vector-icons';
 
 type TagInputProps = {
   tags: string[];
-  setTags: (tags: string[]) => void;
+  setTags: React.Dispatch<React.SetStateAction<string[]>>;
   placeholder?: string;
 };
 
@@ -12,25 +12,28 @@ export default function TagInput({ tags, setTags, placeholder = 'Add a tag...' }
   const [input, setInput] = useState('');
 
   const addTag = () => {
+    console.log('addTag:', input);
     const newTag = input.trim();
-    if (newTag && !tags.includes(newTag)) {
-      setTags([...tags, newTag]);
-      setInput('');
-    }
+    if (!newTag || tags.includes(newTag)) return;
+
+    // add new tag to the tags array
+    setTags(prev => [...prev, newTag]);
+    setInput('');
   };
 
   const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
+    // functional update
+    setTags((prev: string[]) => prev.filter((tag: string) => tag !== tagToRemove));
   };
 
   return (
     <View style={styles.wrapper}>
       <View style={styles.tagList}>
-        {tags.map((tag, index) => (
-          <View key={index} style={styles.tag}>
+        {tags.map(tag => (
+          <View key={tag} style={styles.tag}>
             <Text style={styles.tagText}>{tag}</Text>
-            <TouchableOpacity onPress={() => removeTag(tag)}>
-              <Feather name="x" size={14} color="#000" />
+            <TouchableOpacity onPress={() => removeTag(tag)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Feather name="x" size={14} color="black" />
             </TouchableOpacity>
           </View>
         ))}
@@ -44,7 +47,9 @@ export default function TagInput({ tags, setTags, placeholder = 'Add a tag...' }
         onChangeText={setInput}
         onSubmitEditing={addTag}
         returnKeyType="done"
+        blurOnSubmit
       />
+
     </View>
   );
 }
@@ -73,6 +78,17 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: 'bold',
     marginRight: 6,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  addButton: {
+    marginLeft: 8,
+    padding: 8,
+    backgroundColor: '#FFD700',
+    borderRadius: 4,
   },
   input: {
     borderColor: '#999',

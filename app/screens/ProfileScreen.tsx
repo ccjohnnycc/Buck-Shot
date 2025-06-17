@@ -12,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { auth } from '../services/firebaseConfig';
 import * as FileSystem from 'expo-file-system';
+import { signOut } from 'firebase/auth';
 
 const ProfileScreen = () => {
   const [status, setStatus] = useState<string>('');
@@ -21,17 +22,12 @@ const ProfileScreen = () => {
   const [journalCount, setJournalCount] = useState<number>(0);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [name, setName] = useState<string>('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const [hasUnsyncedHunts, setHasUnsyncedHunts] = useState<boolean>(false);
 
   useEffect(() => {
     AsyncStorage.getItem('userEmail').then(storedEmail => {
       if (storedEmail) {
         setEmail(storedEmail);
         fetchStats(storedEmail);
-        loadTags();
-        checkUnsyncedHunts();
       }
     });
   }, []);
@@ -47,72 +43,51 @@ const ProfileScreen = () => {
     setJournalCount(journalSnapshot.size);
   };
 
-const handleUpload = async () => {
-  setStatus('Uploading test hunt…');
-  setLoading(true);
-
-  try {
-    const result = await uploadTestHunt();
-    if (result.success) {
-      setStatus(`Uploaded`);
-      await fetchStats(email || (await AsyncStorage.getItem('userEmail')) || '');
-      await checkUnsyncedHunts();
-    } else {
-      setStatus('Upload failed. See console.');
+  //log user out and reset navigation
+  const handleLogout = async () => {
+    try {
+      // Sign out Firebase
+      await signOut(auth);
+      // Clear stored email
+      await AsyncStorage.removeItem('userEmail');
+      // Reset navigation to AuthLanding
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'AuthLanding' }],
+      });
+    } catch (err: any) {
+      Alert.alert('Logout failed', err.message);
     }
-  } catch (err) {
-    console.error(err);
-    setStatus('An error occurred.');
-  } finally {
-    setLoading(false); 
-  }
-};
+  };
 
-  const loadTags = async () => {
-  const user = auth.currentUser;
-  if (!user) return;
 
-  const tagSet = new Set<string>();
+  const handleUpload = async () => {
+    setStatus('Uploading test hunt…');
+    setLoading(true);
 
-  const huntSnapshot = await getDocs(collection(db, `users/${user.uid}/hunts`));
-  huntSnapshot.forEach(doc => {
-    const data = doc.data();
-    if (Array.isArray(data.tags) && data.tags.length > 0) {
-      tagSet.add(data.tags[0]); 
+    try {
+      const result = await uploadTestHunt();
+      if (result.success) {
+        setStatus(`Uploaded`);
+        await fetchStats(email || (await AsyncStorage.getItem('userEmail')) || '');
+      } else {
+        setStatus('Upload failed. See console.');
+      }
+    } catch (err) {
+      console.error(err);
+      setStatus('An error occurred.');
+    } finally {
+      setLoading(false);
     }
-  });
+  };
 
-  const journalSnapshot = await getDocs(collection(db, `users/${user.uid}/journalEntries`));
-  journalSnapshot.forEach(doc => {
-    const data = doc.data();
-     if (Array.isArray(data.tags) && data.tags.length > 0) {
-      tagSet.add(data.tags[0]); 
-    }
-  });
-
-  setAvailableTags(Array.from(tagSet));
-};
-
-const checkUnsyncedHunts = async () => {
-  const folders = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
-  const hunts = folders.filter(name => name.startsWith('hunt_'));
-
-  for (const folder of hunts) {
-    const flag = await FileSystem.getInfoAsync(FileSystem.documentDirectory + folder + '/.uploaded');
-    if (!flag.exists) {
-      setHasUnsyncedHunts(true);
-      return;
-    }
-  }
-  setHasUnsyncedHunts(false);
-};
 
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
       <View style={styles.overlay} />
       <View style={styles.container}>
         <Feather name="user" size={80} color="#FFD700" />
-        <Text style={styles.title}>My Profile</Text>
+        <Text style={styles.title}>My Profile </Text>
 
         <View style={styles.statsBox}>
           <Text style={styles.stat}>Email: {name || email || 'Guest'}</Text>
@@ -120,51 +95,42 @@ const checkUnsyncedHunts = async () => {
           <Text style={styles.stat}>Journal Entries: {journalCount}</Text>
         </View>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 20 }}>
-          {availableTags.map(tag => {
-            const isSelected = selectedTags.includes(tag);
-            return (
-              <TouchableOpacity key={tag} style={{
-                  backgroundColor: isSelected ? '#FFD700' : '#444',
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 20,
-                  margin: 4,
-                }}
-                onPress={() => {
-                  if (isSelected) {
-                    setSelectedTags(prev => prev.filter(t => t !== tag));
-                  } else {
-                    setSelectedTags(prev => [...prev, tag]);
-                  }
-                }}
-              >
-                <Text style={{ color: isSelected ? '#000' : '#fff' }}>{tag}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
         <View style={styles.buttonGroup}>
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={() => navigation.navigate('JournalList', { filterTags: selectedTags })}
+            onPress={() => navigation.navigate({ name: 'JournalList', params: {} })}
           >
-            <Text style={styles.buttonText}>View Journal</Text>
+            <Text style={styles.buttonText}>View Journal </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={() => navigation.navigate('Gallery', { filterTags: selectedTags })}
+            onPress={() => navigation.navigate({ name: 'Gallery', params: {} })}
           >
-            <Text style={styles.buttonText}>View Hunt Gallery</Text>
+            <Text style={styles.buttonText}>View Hunt Gallery </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.bottomButtons}>
-          <Button title="Sync to Cloud" onPress={handleUpload} color="#FFA500" disabled={loading || !hasUnsyncedHunts} />
+          <Button
+            title="Sync to Cloud"
+            onPress={handleUpload}
+            color="#FFA500"
+            disabled={loading}
+          />
           <View style={{ marginVertical: 8 }} />
-          <Button title="Edit Profile" onPress={() => Alert.alert("Coming Soon", "Edit Profile is not available yet.")} />
+          <Button
+            title="Edit Profile"
+            onPress={() => Alert.alert('Coming Soon', 'Edit Profile is not available yet.')}
+          />
+          <View style={{ marginVertical: 8 }} />
+          <Button
+            title="Logout"
+            onPress={handleLogout}
+            color="#ff4444"
+          />
         </View>
+
         {status ? <Text style={styles.status}>{status}</Text> : null}
         {loading && <ActivityIndicator size="large" color="#FFD700" />}
       </View>

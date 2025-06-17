@@ -15,7 +15,14 @@ import { useIsFocused } from '@react-navigation/native';
 import InstructionBanner from '../components/InstructionBanner';
 import DraggableCrosshair from '../components/DraggableCrosshair';
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const TOP_UI_HEIGHT = 60;
+const BOTTOM_UI_HEIGHT = 120;
+
+// Known card width for calibration (inches)
+const KNOWN_WIDTH_INCHES = 3.375;
+// Preset calibration distance (inches)
+const CALIBRATION_DISTANCE = 36;
 
 export default function CalibrationScreen({ navigation }: any) {
   const [facing, setFacing] = useState<CameraType>('back');
@@ -23,32 +30,25 @@ export default function CalibrationScreen({ navigation }: any) {
   const [permission, requestPermission] = useCameraPermissions();
   const [hasCalibration, setHasCalibration] = useState(false);
 
-  // distance of your known card in inches
-  const knownWidthInches = 3.375;
+  // Measured size of the camera container
+  const [cameraSize, setCameraSize] = useState({ width: 0, height: 0 });
 
   // URI for the captured calibration image
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
   const isFocused = useIsFocused();
 
-  // marker positions
+  // Marker positions
   const [marker1, setMarker1] = useState<{ x: number; y: number } | null>(null);
   const [marker2, setMarker2] = useState<{ x: number; y: number } | null>(null);
 
-  // load existing calibration (if any)
+  // On mount, see if calibration data already exists
   useEffect(() => {
     AsyncStorage.getItem('calibration').then((data) => {
       if (data) setHasCalibration(true);
     });
   }, []);
 
-  /* helper to clear everything and go back to live camera */
-  const clearAll = () => {
-    setCapturedUri(null);
-    setMarker1(null);
-    setMarker2(null);
-  };
-
-  /* permission handling */
+  // If camera permissions not yet determined…
   if (!permission) {
     return (
       <View style={styles.center}>
@@ -59,13 +59,20 @@ export default function CalibrationScreen({ navigation }: any) {
   if (!permission.granted) {
     return (
       <View style={styles.center}>
-        <Text style={styles.label}>Camera permission is required</Text>
+        <Text style={styles.label}>Camera permission is required </Text>
         <Button title="Grant permission" onPress={requestPermission} />
       </View>
     );
   }
 
-  /* calculate pixel distance between two points */
+  /* Helper to clear everything and go back to live camera */
+  const clearAll = () => {
+    setCapturedUri(null);
+    setMarker1(null);
+    setMarker2(null);
+  };
+
+  /* Calculate pixel distance between two points */
   const calculatePixelDistance = (
     p1: { x: number; y: number },
     p2: { x: number; y: number }
@@ -75,7 +82,7 @@ export default function CalibrationScreen({ navigation }: any) {
     return Math.hypot(dx, dy);
   };
 
-  /* save calibration data */
+  /* Save calibration data */
   const saveCalibration = async () => {
     if (!marker1 || !marker2) {
       Alert.alert(
@@ -85,21 +92,21 @@ export default function CalibrationScreen({ navigation }: any) {
       return;
     }
     const pixelDistance = calculatePixelDistance(marker1, marker2);
-    const pixelsPerInch = pixelDistance / knownWidthInches;
-    const calibrationDistance = 36;
+    const pixelsPerInch = pixelDistance / KNOWN_WIDTH_INCHES;
 
     await AsyncStorage.setItem(
       'calibration',
-      JSON.stringify({ pixelsPerInch, calibrationDistance })
+      JSON.stringify({ pixelsPerInch, calibrationDistance: CALIBRATION_DISTANCE })
     );
     Alert.alert(
       'Calibration Saved',
       'You can now measure objects at different distances.'
     );
-    navigation.navigate('Main', { screen: 'Measure' });
+    // Navigate back into the Measure tab
+    navigation.replace('Main', { screen: 'Measure' });
   };
 
-  /* reset stored calibration entirely */
+  /* Reset stored calibration entirely */
   const handleResetCalibration = async () => {
     await AsyncStorage.removeItem('calibration');
     setHasCalibration(false);
@@ -109,59 +116,98 @@ export default function CalibrationScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Instruction banner to guide the user */}
-      <InstructionBanner message="Drag both crosshairs to the ends of a credit card to calibrate."
-        message2="Hold camera 3 feet or 36 inches away from your card." autoHideDuration={6000} />
+      {/* Instruction banner */}
+      <InstructionBanner
+        message="Drag both crosshairs to the ends of a credit card to calibrate."
+        message2="Hold camera 3 feet (36″) away from your card."
+        autoHideDuration={6000}
+      />
 
-      {/* Camera / Preview container */}
-      <View style={styles.camera}>
+      {/* Camera / Preview Container */}
+      <View
+        style={styles.cameraContainer}
+        onLayout={(evt) => {
+          const { width, height } = evt.nativeEvent.layout;
+          setCameraSize({ width, height });
+        }}
+      >
         {capturedUri ? (
+          // Static captured image, sized to cameraSize
           <Image
             source={{ uri: capturedUri }}
-            style={StyleSheet.absoluteFill}
+            style={{ width: cameraSize.width, height: cameraSize.height }}
             resizeMode="cover"
           />
         ) : (
-          isFocused && (
+          // Live camera preview, sized to cameraSize
+          isFocused &&
+          cameraSize.height > 0 && (
             <CameraView
               ref={cameraRef}
-              style={StyleSheet.absoluteFill}
+              style={{ width: cameraSize.width, height: cameraSize.height }}
               facing={facing}
             />
           )
         )}
 
-        {/* Draggable markers (now all receive capturedUri!) */}
-        {marker1 ? (
-          <DraggableCrosshair
-            initialX={marker1.x}
-            initialY={marker1.y}
-            onDragEnd={setMarker1}
-            capturedUri={capturedUri} parentWidth={0} parentHeight={0}          />
-        ) : (
-          <DraggableCrosshair
-              initialX={width / 2 - 60}
-              initialY={200}
-              onDragEnd={setMarker1}
-              capturedUri={capturedUri} parentWidth={0} parentHeight={0}          />
-        )}
-        {marker2 ? (
-          <DraggableCrosshair
-            initialX={marker2.x}
-            initialY={marker2.y}
-            onDragEnd={setMarker2}
-            capturedUri={capturedUri} parentWidth={0} parentHeight={0}          />
-        ) : (
-          marker1 && (
-            <DraggableCrosshair
-                initialX={width / 2 + 60}
-                initialY={200}
+        {/* Only render crosshairs once cameraSize is known */}
+        {cameraSize.width > 0 && cameraSize.height > 0 && (
+          <>
+            {/* Marker 1 */}
+            {marker1 ? (
+              <DraggableCrosshair
+                parentWidth={cameraSize.width}
+                parentHeight={cameraSize.height}
+                clampTop={TOP_UI_HEIGHT}
+                clampBottom={cameraSize.height - BOTTOM_UI_HEIGHT}
+                initialX={marker1.x}
+                initialY={marker1.y}
+                onDragEnd={setMarker1}
+                capturedUri={capturedUri}
+              />
+            ) : (
+              <DraggableCrosshair
+                parentWidth={cameraSize.width}
+                parentHeight={cameraSize.height}
+                clampTop={TOP_UI_HEIGHT}
+                clampBottom={cameraSize.height - BOTTOM_UI_HEIGHT}
+                initialX={cameraSize.width / 2 - 60}
+                initialY={cameraSize.height / 2}
+                onDragEnd={setMarker1}
+                capturedUri={capturedUri}
+              />
+            )}
+
+            {/* Marker 2 */}
+            {marker2 ? (
+              <DraggableCrosshair
+                parentWidth={cameraSize.width}
+                parentHeight={cameraSize.height}
+                clampTop={TOP_UI_HEIGHT}
+                clampBottom={cameraSize.height - BOTTOM_UI_HEIGHT}
+                initialX={marker2.x}
+                initialY={marker2.y}
                 onDragEnd={setMarker2}
-                capturedUri={capturedUri} parentWidth={0} parentHeight={0}            />
-          )
+                capturedUri={capturedUri}
+              />
+            ) : (
+              marker1 && (
+                <DraggableCrosshair
+                  parentWidth={cameraSize.width}
+                  parentHeight={cameraSize.height}
+                  clampTop={TOP_UI_HEIGHT}
+                  clampBottom={cameraSize.height - BOTTOM_UI_HEIGHT}
+                  initialX={cameraSize.width / 2 + 60}
+                  initialY={cameraSize.height / 2}
+                  onDragEnd={setMarker2}
+                  capturedUri={capturedUri}
+                />
+              )
+            )}
+          </>
         )}
 
-        {/* Capture / Live Camera swap */}
+        {/* Bottom button overlay */}
         <View style={styles.buttonOverlay}>
           {!capturedUri && (
             <View style={styles.buttonSpacing}>
@@ -192,7 +238,7 @@ export default function CalibrationScreen({ navigation }: any) {
           )}
         </View>
 
-        {/* Restart button */}
+        {/* “Restart” button (above the camera) */}
         <TouchableOpacity style={styles.restartButton} onPress={clearAll}>
           <Text style={styles.restartText}>Restart </Text>
         </TouchableOpacity>
@@ -202,8 +248,13 @@ export default function CalibrationScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  camera: { flex: 1 },
+  container: {
+    flex: 1,
+  },
+  cameraContainer: {
+    flex: 1,
+    width: '100%',
+  },
   center: {
     flex: 1,
     justifyContent: 'center',
@@ -218,7 +269,7 @@ const styles = StyleSheet.create({
   },
   buttonOverlay: {
     position: 'absolute',
-    bottom: 25,
+    bottom: 10, // leave a small gap above the bottom UI if needed
     width: '90%',
     alignSelf: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -229,15 +280,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   restartButton: {
-        position: 'absolute',
-        marginTop: 100,
-        right: 20,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        padding: 10,
-        borderRadius: 5,
-    },
-    restartText: {
-        color: '#fff',
-        textAlign: 'center',
-    },
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    padding: 10,
+    borderRadius: 5,
+  },
+  restartText: {
+    color: '#fff',
+    textAlign: 'center',
+  },
 });
