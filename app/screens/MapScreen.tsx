@@ -1,9 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Button, ImageBackground, TextInput, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Button, ImageBackground, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { captureRef } from 'react-native-view-shot';
+import * as FileSystem from 'expo-file-system';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
+import { Feather } from '@expo/vector-icons';
 
 type HuntPin = {
   id: string;
@@ -26,11 +31,44 @@ export default function MapScreen() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const mapRef = useRef<MapView>(null);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [pins, setPins] = useState<HuntPin[]>([]);
   const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [activePin, setActivePin] = useState<HuntPin | null>(null);
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [customTitle, setCustomTitle] = useState('');
+
+  const saveMapSnapshot = async () => {
+    if (!mapRef.current) return;
+
+    try {
+      const uri = await captureRef(mapRef.current, {
+        format: 'jpg',
+        quality: 0.9,
+      });
+
+      const folderUri = FileSystem.documentDirectory + 'offline_maps/';
+      const filename = `map_${Date.now()}.jpg`;
+      const destinationUri = folderUri + filename;
+
+      // ✅ Ensure the folder exists
+      const folderInfo = await FileSystem.getInfoAsync(folderUri);
+      if (!folderInfo.exists) {
+        await FileSystem.makeDirectoryAsync(folderUri, { intermediates: true });
+      }
+
+      // ✅ Use copyAsync instead of moveAsync (move often fails on iOS temp files)
+      await FileSystem.copyAsync({
+        from: uri,
+        to: destinationUri,
+      });
+
+      Alert.alert('Saved', 'Map snapshot saved for offline viewing!');
+    } catch (err) {
+      console.error('Snapshot failed:', err);
+      Alert.alert('Error', 'Failed to save map snapshot.');
+    }
+  };
 
   const goToUserLocation = async () => {
     setLoading(true);
@@ -150,19 +188,19 @@ export default function MapScreen() {
       </View>
 
       <View style={styles.sidebar}>
-  {(['Tree Stand', 'Pin', 'Cam', 'Feeder'] as (keyof typeof iconMap)[]).map((tag) => (
-    <TouchableOpacity
-      key={tag}
-      style={[
-        styles.sidebarButton,
-        filterTag === tag && styles.sidebarButtonActive
-      ]}
-      onPress={() => setFilterTag(filterTag === tag ? null : tag)} // toggle
-    >
-      <Image source={iconMap[tag]} style={styles.sidebarIcon} />
-    </TouchableOpacity>
-  ))}
-</View>
+        {(['Tree Stand', 'Pin', 'Cam', 'Feeder'] as (keyof typeof iconMap)[]).map((tag) => (
+          <TouchableOpacity
+            key={tag}
+            style={[
+              styles.sidebarButton,
+              filterTag === tag && styles.sidebarButtonActive
+            ]}
+            onPress={() => setFilterTag(filterTag === tag ? null : tag)} // toggle
+          >
+            <Image source={iconMap[tag]} style={styles.sidebarIcon} />
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <View style={styles.overlay} />
 
@@ -210,10 +248,19 @@ export default function MapScreen() {
         </View>
       )}
 
-      <TouchableOpacity style={styles.findMeBtn} onPress={goToUserLocation}>
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Find Me</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonStack}>
+        <TouchableOpacity style={[styles.mapButton, styles.findBtn]} onPress={goToUserLocation}>
+          <Text style={styles.mapButtonText}>Find Me</Text>
+        </TouchableOpacity>
 
+        <TouchableOpacity style={[styles.mapButton, styles.viewBtn]} onPress={() => navigation.navigate('OfflineMaps')}>
+          <Text style={styles.mapButtonText}>View Saved Maps</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.mapButton, styles.saveBtn]} onPress={saveMapSnapshot}>
+          <Text style={styles.mapButtonTextDark}>Save Map</Text>
+        </TouchableOpacity>
+      </View>
       {selectedCoords && (
         <View style={styles.modal}>
           <Text style={styles.modalTitle}>Tag this location</Text>
@@ -351,25 +398,73 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sidebar: {
-  position: 'absolute',
-  right: 10,
-  top: 150,
-  backgroundColor: 'rgba(0,0,0,0.5)',
-  borderRadius: 12,
-  paddingVertical: 10,
-  zIndex: 10,
-},
-sidebarButton: {
-  padding: 5,
-  alignItems: 'center',
-},
-sidebarButtonActive: {
-  backgroundColor: '#FFD700',
-  borderRadius: 2,
-},
-sidebarIcon: {
-  width: 35,
-  height: 35,
-  resizeMode: 'contain',
-},
+    position: 'absolute',
+    right: 10,
+    top: 150,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    zIndex: 10,
+  },
+  sidebarButton: {
+    padding: 5,
+    alignItems: 'center',
+  },
+  sidebarButtonActive: {
+    backgroundColor: '#FFD700',
+    borderRadius: 2,
+  },
+  sidebarIcon: {
+    width: 35,
+    height: 35,
+    resizeMode: 'contain',
+  },
+  buttonStack: {
+    position: 'absolute',
+    right: 15,
+    bottom: 25,
+    zIndex: 10,
+    alignItems: 'flex-end',
+  },
+
+  mapButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    marginBottom: 12,
+    minWidth: 140,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
+  },
+
+  viewBtn: {
+    backgroundColor: '#2f95dc',
+    top: 30,
+  },
+
+  saveBtn: {
+    backgroundColor: '#FFD700',
+    position: 'absolute',
+  },
+
+  findBtn: {
+    backgroundColor: '#FF0000',
+    top: 40,
+  },
+
+  mapButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+
+  mapButtonTextDark: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
 });

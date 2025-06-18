@@ -8,6 +8,8 @@ import { Query, DocumentData, collection, getDocs, deleteDoc, doc, query, where 
 import { auth, db } from '../services/firebaseConfig';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import TagInput from '../components/TagInput';
+import { Feather } from '@expo/vector-icons';
+
 
 
 const screenWidth = Dimensions.get('window').width;
@@ -38,6 +40,7 @@ export default function GalleryScreen() {
   const [editingTagsFolder, setEditingTagsFolder] = useState<string | null>(null);
   const [tempTags, setTempTags] = useState<string[]>([]);
   const [showTagModal, setShowTagModal] = useState(false);
+  
 
   // LOAD HUNT FOLDERS
   const loadHuntFolders = async () => {
@@ -216,6 +219,12 @@ const validFolders = filteredHuntFolders.filter(Boolean) as string[];
             </TouchableOpacity>
           ))
         )}
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Feather name="arrow-left" size={24} color="#fff" />
+        </TouchableOpacity>
       </ScrollView>
 
       {/* MODAL: Rename Hunt */}
@@ -413,4 +422,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: '#333',
   },
+  backButton: {
+  position: 'absolute',
+  top: 30,
+  left: 10,
+  paddingVertical: 6,
+  paddingHorizontal: 14,
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  borderRadius: 20,
+  zIndex: 10,
+},
 });

@@ -9,6 +9,7 @@ import { db, auth } from '../services/firebaseConfig';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import TagInput from '../components/TagInput';
+import { Feather } from '@expo/vector-icons';
 
 type JournalNavProp = NativeStackNavigationProp<RootStackParamList, 'JournalList'>;
 
@@ -61,6 +62,12 @@ export default function JournalListScreen() {
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
       <View style={styles.overlay} />
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Feather name="arrow-left" size={24} color="#fff" />
+      </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.container} refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
@@ -179,5 +186,15 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     marginHorizontal: 2
-  }
+  },
+  backButton: {
+    position: 'absolute',
+    top: 30,
+    left: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 10,
+    zIndex: 10,
+  },
 });
