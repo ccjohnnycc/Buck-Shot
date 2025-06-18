@@ -2,7 +2,23 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Button, ImageBackground, TextInput, TouchableOpacity } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+
+type HuntPin = {
+  id: string;
+  title: string;
+  tag: 'Tree Stand' | 'Pin' | 'Cam' | 'Feeder';
+  latitude: number;
+  longitude: number;
+};
+
+const iconMap = {
+  'Tree Stand': require('../../assets/Tree-stand.png'), 
+  'Pin': require('../../assets/Pin.png'),
+  'Cam': require('../../assets/Cam.png'),
+  'Feeder': require('../../assets/Feeder.png'),
+};
 export default function MapScreen() {
     const [region, setRegion] = useState<Region | null>(null);
     const [marker, setMarker] = useState<{ latitude: number, longitude: number } | null>(null);
@@ -10,6 +26,9 @@ export default function MapScreen() {
     const [error, setError] = useState('');
     const [search, setSearch] = useState('');
     const mapRef = useRef<MapView>(null);
+    const [pins, setPins] = useState<HuntPin[]>([]);
+    const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lon: number } | null>(null);
+    const [activePin, setActivePin] = useState<HuntPin | null>(null);
 
     const goToUserLocation = async () => {
         setLoading(true);
@@ -66,6 +85,13 @@ export default function MapScreen() {
 
     useEffect(() => {
         (async () => {
+            const saved = await AsyncStorage.getItem('huntPins');
+            if (saved) setPins(JSON.parse(saved));
+        })();
+    }, []);
+
+    useEffect(() => {
+        (async () => {
             setLoading(true);
             let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
@@ -104,38 +130,99 @@ export default function MapScreen() {
     }
     if (!region) return null;
 
-    return (
-        <ImageBackground source={require('../../assets/background_image.png')} style={{ flex: 1 }}>
-            <View style={styles.searchContainer}>
-                <TextInput
-                    style={styles.searchInput}
-                    value={search}
-                    onChangeText={setSearch}
-                    placeholder="Search for a place"
-                    placeholderTextColor="#ccc"
-                    returnKeyType="search"
-                    onSubmitEditing={handleSearch}
-                />
-                <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
-                    <Text style={{ color: '#fff' }}>Search</Text>
-                </TouchableOpacity>
-            </View>
-            <View style={styles.overlay} />
-            <MapView
-                ref={mapRef}
-                style={StyleSheet.absoluteFill}
-                region={region}
-                showsUserLocation
-                showsMyLocationButton={false}
-                onRegionChangeComplete={setRegion}
-            >
-                {marker && <Marker coordinate={marker} />}
-            </MapView>
-            <TouchableOpacity style={styles.findMeBtn} onPress={goToUserLocation}>
-                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Find Me</Text>
-            </TouchableOpacity>
-        </ImageBackground>
-    );
+return (
+  <ImageBackground source={require('../../assets/background_image.png')} style={{ flex: 1 }}>
+    <View style={styles.searchContainer}>
+      <TextInput
+        style={styles.searchInput}
+        value={search}
+        onChangeText={setSearch}
+        placeholder="Search for a place"
+        placeholderTextColor="#ccc"
+        returnKeyType="search"
+        onSubmitEditing={handleSearch}
+      />
+      <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
+        <Text style={{ color: '#fff' }}>Search</Text>
+      </TouchableOpacity>
+    </View>
+
+    <View style={styles.overlay} />
+
+    <MapView
+      ref={mapRef}
+      style={StyleSheet.absoluteFill}
+      region={region}
+      showsUserLocation
+      showsMyLocationButton={false}
+      onRegionChangeComplete={setRegion}
+      onLongPress={(e) => {
+        const coords = e.nativeEvent.coordinate;
+        setSelectedCoords({ lat: coords.latitude, lon: coords.longitude });
+      }}
+    >
+      {pins.map((pin) => (
+        <Marker
+          key={pin.id}
+          coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
+          title={pin.title}
+          image={iconMap[pin.tag]}
+          onPress={() => setActivePin(pin)}
+        />
+      ))}
+      {marker && <Marker coordinate={marker} />}
+    </MapView>
+
+    {activePin && (
+  <View style={styles.deletePinOverlay}>
+    <Text style={styles.deleteText}>{activePin.title}</Text>
+    <Button
+      title="Delete Pin"
+      color="#ff4444"
+      onPress={async () => {
+        const updatedPins = pins.filter(p => p.id !== activePin.id);
+        setPins(updatedPins);
+        await AsyncStorage.setItem('huntPins', JSON.stringify(updatedPins));
+        setActivePin(null);
+      }}
+    />
+    <Button title="Cancel" onPress={() => setActivePin(null)} />
+  </View>
+)}
+
+    <TouchableOpacity style={styles.findMeBtn} onPress={goToUserLocation}>
+      <Text style={{ color: '#fff', fontWeight: 'bold' }}>Find Me</Text>
+    </TouchableOpacity>
+
+    {selectedCoords && (
+      <View style={styles.modal}>
+        <Text style={styles.modalTitle}>Tag this location</Text>
+        {['Tree Stand', 'Pin', 'Cam', 'Feeder'].map((type) => (
+  <TouchableOpacity
+    key={type}
+    style={styles.modalButton}
+    onPress={async () => {
+      const newPin: HuntPin = {
+        id: Date.now().toString(),
+        title: type,
+        tag: type as HuntPin['tag'],
+        latitude: selectedCoords.lat,
+        longitude: selectedCoords.lon,
+      };
+      const updatedPins = [...pins, newPin];
+      setPins(updatedPins);
+      await AsyncStorage.setItem('huntPins', JSON.stringify(updatedPins));
+      setSelectedCoords(null);
+    }}
+  >
+    <Text style={styles.modalButtonText}>{type}</Text>
+  </TouchableOpacity>
+))}
+        <Button title="Cancel" onPress={() => setSelectedCoords(null)} />
+      </View>
+    )}
+  </ImageBackground>
+);
 }
 
 const styles = StyleSheet.create({
@@ -185,4 +272,48 @@ const styles = StyleSheet.create({
         elevation: 3,
         zIndex: 2,
     },
+    modal: {
+        position: 'absolute',
+        top: '30%',
+        left: '10%',
+        right: '10%',
+        backgroundColor: '#333',
+        padding: 20,
+        borderRadius: 10,
+        zIndex: 10,
+    },
+    modalTitle: {
+        color: '#FFD700',
+        fontSize: 18,
+        marginBottom: 10,
+        textAlign: 'center'
+    },
+    modalButton: {
+        backgroundColor: '#FFD700',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10
+  },
+  modalButtonText: {
+    color: '#000',
+    fontWeight: 'bold',
+    textAlign: 'center'
+  },
+  deletePinOverlay: {
+    position: 'absolute',
+    bottom: 20,
+    top: 'auto',
+    left: '20%',
+    right: '20%',
+    backgroundColor: '#222',
+    padding: 5,
+    borderRadius: 10,
+    zIndex: 5,
+    alignItems: 'center',
+  },
+  deleteText: {
+    color: '#fff',
+    fontSize: 16,
+    marginBottom: 10,
+  }
 });
