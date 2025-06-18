@@ -6,11 +6,13 @@ import MeasureScreen from '../screens/MeasureScreen';
 import WeatherScreen from '../screens/WeatherScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import MapScreen from '../screens/MapScreen';
+import CalendarScreen from '../screens/CalendarScreen';
 
 type TabParamList = {
     Measure: undefined;
     Weather: undefined;
     Map: undefined; 
+    Calendar: undefined;
     Profile: undefined;
 };
 
@@ -28,6 +30,8 @@ export default function MainTabs() {
                         iconName = 'scan-outline';
                     } else if (route.name === 'Weather') {
                         iconName = 'rainy-outline';
+                    } else if (route.name === 'Calendar') {
+                        iconName = 'calendar-outline';
                     } else if (route.name === 'Profile') {
                         iconName = 'person-circle-outline';
                     }
@@ -44,6 +48,7 @@ export default function MainTabs() {
             <Tab.Screen name="Measure" component={MeasureScreen} />
             <Tab.Screen name="Weather" component={WeatherScreen} />
             <Tab.Screen name="Map" component={MapScreen} />   
+            <Tab.Screen name="Calendar" component={CalendarScreen} />
             <Tab.Screen name="Profile" component={ProfileScreen} />
         </Tab.Navigator>
     );
