@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Button, ImageBackground, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Button, ImageBackground, TextInput, TouchableOpacity, Alert, BackHandler } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function MapScreen() {
     const [region, setRegion] = useState<Region | null>(null);
@@ -10,6 +11,30 @@ export default function MapScreen() {
     const [error, setError] = useState('');
     const [search, setSearch] = useState('');
     const mapRef = useRef<MapView>(null);
+
+    useFocusEffect(
+        React.useCallback(() => {
+          const onBackPress = () => {
+            Alert.alert(
+              'Confirm Exit',
+              'Are you sure you want to exit the app?',
+              [
+                { text: 'Cancel', style: 'cancel', onPress: () => {} },
+                { text: 'Yes', onPress: () => BackHandler.exitApp() },
+              ],
+              { cancelable: true }
+            );
+            // Return true to stop default back behavior (app exit)
+            return true;
+          };
+    
+          const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    
+          return () => {
+            backHandler.remove();
+          };
+         }, [])
+      );
 
     const goToUserLocation = async () => {
         setLoading(true);
