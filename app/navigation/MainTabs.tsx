@@ -21,7 +21,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 export default function MainTabs() {
     return (
         <Tab.Navigator
-            initialRouteName="Measure"
+            initialRouteName="Map"
             screenOptions={({ route }) => ({
                 headerShown: false, tabBarIcon: ({ color, size }) => {
                     let iconName: React.ComponentProps<typeof Ionicons>['name'] = 'help-circle';
@@ -45,9 +45,9 @@ export default function MainTabs() {
                 tabBarInactiveTintColor: 'gray',
             })}
         >
-            <Tab.Screen name="Measure" component={MeasureScreen} />
+            <Tab.Screen name="Map" component={MapScreen} />
             <Tab.Screen name="Weather" component={WeatherScreen} />
-            <Tab.Screen name="Map" component={MapScreen} />   
+            <Tab.Screen name="Measure" component={MeasureScreen} />
             <Tab.Screen name="Calendar" component={CalendarScreen} />
             <Tab.Screen name="Profile" component={ProfileScreen} />
         </Tab.Navigator>
