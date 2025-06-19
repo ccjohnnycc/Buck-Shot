@@ -117,7 +117,7 @@ export default function MapScreen() {
                     onSubmitEditing={handleSearch}
                 />
                 <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
-                    <Text style={{ color: '#fff' }}>Search</Text>
+                    <Text style={{ color: '#fff' }}>Search </Text>
                 </TouchableOpacity>
             </View>
             <View style={styles.overlay} />
@@ -132,7 +132,7 @@ export default function MapScreen() {
                 {marker && <Marker coordinate={marker} />}
             </MapView>
             <TouchableOpacity style={styles.findMeBtn} onPress={goToUserLocation}>
-                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Find Me</Text>
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Find Me </Text>
             </TouchableOpacity>
         </ImageBackground>
     );
