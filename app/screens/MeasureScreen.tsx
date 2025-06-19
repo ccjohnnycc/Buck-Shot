@@ -56,7 +56,7 @@ export default function MeasureScreen({ navigation }: any) {
   const [saveJournal, setSaveJournal] = useState(false);
   const containerRef = useRef<View>(null);
 
-  useFocusEffect(
+  /*useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
         Alert.alert(
@@ -78,7 +78,7 @@ export default function MeasureScreen({ navigation }: any) {
         backHandler.remove();
       };
      }, [])
-  );
+  );*/
 
   // When screen regains focus, clear everything if there was a previous photo/markers
   useEffect(() => {
