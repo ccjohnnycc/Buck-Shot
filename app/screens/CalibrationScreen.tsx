@@ -102,8 +102,8 @@ export default function CalibrationScreen({ navigation }: any) {
       'Calibration Saved',
       'You can now measure objects at different distances.'
     );
-    // Navigate back into the Measure tab
-    navigation.replace('Main', { screen: 'Measure' });
+    // Navigate back into the Map tab
+    navigation.replace('Main', { screen: 'Map' });
   };
 
   /* Reset stored calibration entirely */
