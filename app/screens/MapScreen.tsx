@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Button, ImageBackground, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
-import MapView, { Marker, Region } from 'react-native-maps';
+import MapView, { Marker, Polygon, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { captureRef } from 'react-native-view-shot';
@@ -8,7 +8,21 @@ import * as FileSystem from 'expo-file-system';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { Feather } from '@expo/vector-icons';
+//import ranchlandDataRaw from '../../assets/State_Land_Records.json';
+
+type GeoJsonFeature = {
+  type: string;
+  geometry: {
+    type: string;
+    coordinates: any;
+  };
+  properties?: any;
+};
+
+type RanchlandData = {
+  type: string;
+  features: GeoJsonFeature[];
+};
 
 type HuntPin = {
   id: string;
@@ -18,12 +32,17 @@ type HuntPin = {
   longitude: number;
 };
 
-const iconMap = {
+
+//const ranchlandData = ranchlandDataRaw as RanchlandData;
+
+const iconMap: Record<HuntPin['tag'], any> = {
   'Tree Stand': require('../../assets/Tree-stand.png'),
   'Pin': require('../../assets/Pin.png'),
   'Cam': require('../../assets/Cam.png'),
   'Feeder': require('../../assets/Feeder.png'),
 };
+
+
 export default function MapScreen() {
   const [region, setRegion] = useState<Region | null>(null);
   const [marker, setMarker] = useState<{ latitude: number, longitude: number } | null>(null);
@@ -37,6 +56,105 @@ export default function MapScreen() {
   const [activePin, setActivePin] = useState<HuntPin | null>(null);
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [customTitle, setCustomTitle] = useState('');
+  const [showBoundaries, setShowBoundaries] = useState(true);
+  
+  const demoPolygons = [
+  {
+    id: 'miami',
+    coords: [
+      { latitude: 26.7232, longitude: -80.4610 },
+      { latitude: 26.6907, longitude: -79.8892 },
+      { latitude: 25.7295, longitude: -80.1358 },
+      { latitude: 25.4508, longitude: -80.4776 },
+    ],
+  },
+  {
+    id: 'orlando',
+    coords: [
+      { latitude: 28.4204, longitude: -81.1870 },
+      { latitude: 28.4010, longitude: -81.5108 },
+      { latitude: 28.6507, longitude: -81.5438 },
+      { latitude: 28.6381, longitude: -81.2288 },
+    ],
+  },
+  {
+    id: 'tampa',
+    coords: [
+      { latitude: 27.6590, longitude: -82.8031 },
+      { latitude: 28.3697, longitude: -82.8541 },
+      { latitude: 28.3572, longitude: -82.0472 },
+      { latitude: 27.6213, longitude: -81.9952 },
+    ],
+  },
+    {
+    id: 'Jacksonville',
+    coords: [
+      { latitude: 29.9551, longitude: -81.2531 },
+      { latitude: 29.8743, longitude: -81.8668 },
+      { latitude: 30.5925, longitude: -81.9911 },
+      { latitude: 30.6292, longitude: -81.2881 },
+    ],
+  }, 
+];
+  
+  
+//  const parsedRanchlandPolygons = useRef(
+//     ranchlandData.features.flatMap((feature, index) => {
+//       if (feature.geometry?.type === 'Polygon') {
+//         return [
+//           {
+//             id: `polygon-${index}`,
+//             coords: feature.geometry.coordinates[0].map(([lng, lat]: [number, number]) => ({
+//               latitude: lat,
+//               longitude: lng,
+//             })),
+//           },
+//         ];
+//       }
+
+//       if (feature.geometry?.type === 'MultiPolygon') {
+//         return feature.geometry.coordinates.map((polygon: [number, number][][], i: number) => ({
+//           id: `multipolygon-${index}-${i}`,
+//           coords: polygon[0].map(([lng, lat]: [number, number]) => ({
+//             latitude: lat,
+//             longitude: lng,
+//           })),
+//         }));
+//       }
+
+//       return [];
+//     })
+//   ).current;
+
+// const buffer = 0.1; 
+
+// const filteredPolygons = showBoundaries && region
+//   ? parsedRanchlandPolygons.filter(p => {
+//       const lats = p.coords.map((c: { latitude: any; }) => c.latitude);
+//       const lngs = p.coords.map((c: { longitude: any; }) => c.longitude);
+//       const polyMinLat = Math.min(...lats);
+//       const polyMaxLat = Math.max(...lats);
+//       const polyMinLng = Math.min(...lngs);
+//       const polyMaxLng = Math.max(...lngs);
+
+//       const mapMinLat = region.latitude - region.latitudeDelta - buffer;
+//       const mapMaxLat = region.latitude + region.latitudeDelta + buffer;
+//       const mapMinLng = region.longitude - region.longitudeDelta - buffer;
+//       const mapMaxLng = region.longitude + region.longitudeDelta + buffer;
+
+//       const overlapsLat = polyMaxLat >= mapMinLat && polyMinLat <= mapMaxLat;
+//       const overlapsLng = polyMaxLng >= mapMinLng && polyMinLng <= mapMaxLng;
+
+//       return overlapsLat && overlapsLng;
+//     })
+//   : [];
+
+  // console.log('Parsed polygons:', parsedRanchlandPolygons.length);
+  // console.log('Filtered polygons:', filteredPolygons.length);
+  
+  // console.log('Sample polygon coords:', parsedRanchlandPolygons[0]?.coords.slice(0, 5));
+  
+  // const testPolygons = parsedRanchlandPolygons.slice(0, 100);
 
   const saveMapSnapshot = async () => {
     if (!mapRef.current) return;
@@ -51,13 +169,11 @@ export default function MapScreen() {
       const filename = `map_${Date.now()}.jpg`;
       const destinationUri = folderUri + filename;
 
-      // ✅ Ensure the folder exists
       const folderInfo = await FileSystem.getInfoAsync(folderUri);
       if (!folderInfo.exists) {
         await FileSystem.makeDirectoryAsync(folderUri, { intermediates: true });
       }
 
-      // ✅ Use copyAsync instead of moveAsync (move often fails on iOS temp files)
       await FileSystem.copyAsync({
         from: uri,
         to: destinationUri,
@@ -69,6 +185,8 @@ export default function MapScreen() {
       Alert.alert('Error', 'Failed to save map snapshot.');
     }
   };
+
+  //console.log('Parsed polygons:', parsedRanchlandPolygons.length);
 
   const goToUserLocation = async () => {
     setLoading(true);
@@ -141,10 +259,10 @@ export default function MapScreen() {
       }
       let location = await Location.getCurrentPositionAsync({});
       setRegion({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.04,
-        longitudeDelta: 0.04,
+        latitude: 27.9944,
+        longitude: -81.7603,
+        latitudeDelta: 3,
+        longitudeDelta: 3,
       });
       setLoading(false);
     })();
@@ -188,18 +306,30 @@ export default function MapScreen() {
       </View>
 
       <View style={styles.sidebar}>
-        {(['Tree Stand', 'Pin', 'Cam', 'Feeder'] as (keyof typeof iconMap)[]).map((tag) => (
+        {(['Tree Stand', 'Pin', 'Cam', 'Feeder'] as HuntPin['tag'][]).map((tag) => (
           <TouchableOpacity
             key={tag}
             style={[
               styles.sidebarButton,
               filterTag === tag && styles.sidebarButtonActive
             ]}
-            onPress={() => setFilterTag(filterTag === tag ? null : tag)} // toggle
+            onPress={() => setFilterTag(filterTag === tag ? null : tag)}
           >
             <Image source={iconMap[tag]} style={styles.sidebarIcon} />
           </TouchableOpacity>
         ))}
+
+        <TouchableOpacity
+          style={[
+            styles.sidebarButton,
+            showBoundaries && styles.sidebarButtonActive
+          ]}
+          onPress={() => setShowBoundaries(prev => !prev)}
+        >
+          <Text style={{ color: '#fff', fontSize: 12, textAlign: 'center' }}>
+            {showBoundaries ? 'Hide\nBoundaries' : 'Show\nBoundaries'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.overlay} />
@@ -228,6 +358,18 @@ export default function MapScreen() {
             />
           ))}
         {marker && <Marker coordinate={marker} />}
+
+{showBoundaries &&
+  demoPolygons.map(({ id, coords }) => (
+    <Polygon
+      key={id}
+      coordinates={coords}
+      strokeColor="green"
+      fillColor="rgba(0,255,0,0.2)"
+      strokeWidth={2}
+    />
+))}
+
       </MapView>
 
       {activePin && (
