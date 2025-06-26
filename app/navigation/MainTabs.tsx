@@ -21,7 +21,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 export default function MainTabs() {
     return (
         <Tab.Navigator
-            initialRouteName="Map"
+            initialRouteName="Profile"
             screenOptions={({ route }) => ({
                 headerShown: false, tabBarIcon: ({ color, size }) => {
                     let iconName: React.ComponentProps<typeof Ionicons>['name'] = 'help-circle';

@@ -8,22 +8,10 @@ import * as FileSystem from 'expo-file-system';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { Keyboard, TouchableWithoutFeedback } from 'react-native';
-//import ranchlandDataRaw from '../../assets/State_Land_Records.json';
+import { Keyboard } from 'react-native';
+import FloridaBoundariesSimplified from '../../json/FloridaBoundariesSimplified.json';
 
-type GeoJsonFeature = {
-  type: string;
-  geometry: {
-    type: string;
-    coordinates: any;
-  };
-  properties?: any;
-};
 
-type RanchlandData = {
-  type: string;
-  features: GeoJsonFeature[];
-};
 
 type HuntPin = {
   id: string;
@@ -33,14 +21,16 @@ type HuntPin = {
   longitude: number;
 };
 
-
-//const ranchlandData = ranchlandDataRaw as RanchlandData;
-
 const iconMap: Record<HuntPin['tag'], any> = {
   'Tree Stand': require('../../assets/Tree-stand.png'),
   'Pin': require('../../assets/Pin.png'),
   'Cam': require('../../assets/Cam.png'),
   'Feeder': require('../../assets/Feeder.png'),
+};
+
+type ParsedPolygon = {
+  id: string;
+  coords: { latitude: number; longitude: number }[];
 };
 
 
@@ -61,6 +51,11 @@ export default function MapScreen() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isScreenLoading, setIsScreenLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+  const [parsedStateLandPolygons, setParsedPolygons] = useState<ParsedPolygon[]>([]);
+  const [visiblePolygons, setVisiblePolygons] = useState<ParsedPolygon[]>([]);
+  const MAX_POLYGONS = 30;
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
 
   const demoPolygons = [
     {
@@ -101,64 +96,49 @@ export default function MapScreen() {
     },
   ];
 
+  type GeoJson = {
+    features: {
+      geometry: {
+        type: 'Polygon' | 'MultiPolygon';
+        coordinates: any;
+      };
+    }[];
+  };
 
-  //  const parsedRanchlandPolygons = useRef(
-  //     ranchlandData.features.flatMap((feature, index) => {
-  //       if (feature.geometry?.type === 'Polygon') {
-  //         return [
-  //           {
-  //             id: `polygon-${index}`,
-  //             coords: feature.geometry.coordinates[0].map(([lng, lat]: [number, number]) => ({
-  //               latitude: lat,
-  //               longitude: lng,
-  //             })),
-  //           },
-  //         ];
-  //       }
+  useEffect(() => {
+    const parsed = (FloridaBoundariesSimplified as GeoJson).features.flatMap((feature, index) => {
+      if (!feature.geometry) return [];
 
-  //       if (feature.geometry?.type === 'MultiPolygon') {
-  //         return feature.geometry.coordinates.map((polygon: [number, number][][], i: number) => ({
-  //           id: `multipolygon-${index}-${i}`,
-  //           coords: polygon[0].map(([lng, lat]: [number, number]) => ({
-  //             latitude: lat,
-  //             longitude: lng,
-  //           })),
-  //         }));
-  //       }
+      const { type, coordinates } = feature.geometry;
 
-  //       return [];
-  //     })
-  //   ).current;
+      if (type === 'Polygon') {
+        return [{
+          id: `polygon-${index}`,
+          coords: coordinates[0].map(([lng, lat]: [number, number]) => ({
+            latitude: lat,
+            longitude: lng,
+          })),
+        }];
+      }
 
-  // const buffer = 0.1; 
+      if (type === 'MultiPolygon') {
+        return coordinates.flatMap((poly: [number, number][][], polyIndex: number) => ({
+          id: `multipolygon-${index}-${polyIndex}`,
+          coords: poly[0]
+            .filter(([lng, lat]) => lng && lat)
+            .slice(0, 100)
+            .map(([lng, lat]) => ({
+              latitude: lat,
+              longitude: lng,
+            }))
+        }));
+      }
 
-  // const filteredPolygons = showBoundaries && region
-  //   ? parsedRanchlandPolygons.filter(p => {
-  //       const lats = p.coords.map((c: { latitude: any; }) => c.latitude);
-  //       const lngs = p.coords.map((c: { longitude: any; }) => c.longitude);
-  //       const polyMinLat = Math.min(...lats);
-  //       const polyMaxLat = Math.max(...lats);
-  //       const polyMinLng = Math.min(...lngs);
-  //       const polyMaxLng = Math.max(...lngs);
+      return [];
+    });
 
-  //       const mapMinLat = region.latitude - region.latitudeDelta - buffer;
-  //       const mapMaxLat = region.latitude + region.latitudeDelta + buffer;
-  //       const mapMinLng = region.longitude - region.longitudeDelta - buffer;
-  //       const mapMaxLng = region.longitude + region.longitudeDelta + buffer;
-
-  //       const overlapsLat = polyMaxLat >= mapMinLat && polyMinLat <= mapMaxLat;
-  //       const overlapsLng = polyMaxLng >= mapMinLng && polyMinLng <= mapMaxLng;
-
-  //       return overlapsLat && overlapsLng;
-  //     })
-  //   : [];
-
-  // console.log('Parsed polygons:', parsedRanchlandPolygons.length);
-  // console.log('Filtered polygons:', filteredPolygons.length);
-
-  // console.log('Sample polygon coords:', parsedRanchlandPolygons[0]?.coords.slice(0, 5));
-
-  // const testPolygons = parsedRanchlandPolygons.slice(0, 100);
+    setParsedPolygons(parsed);
+  }, []);
 
   const saveMapSnapshot = async () => {
     if (!mapRef.current) return;
@@ -188,6 +168,18 @@ export default function MapScreen() {
       console.error('Snapshot failed:', err);
       Alert.alert('Error', 'Failed to save map snapshot.');
     }
+  };
+
+  const handleRegionChangeComplete = (newRegion: Region) => {
+    setRegion(newRegion);
+
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    debounceTimer.current = setTimeout(() => {
+      filterPolygonsByRegion(newRegion);
+    }, 500);
   };
 
   const getUpdatedRecentSearches = (newSearch: string, existing: string[]): string[] => {
@@ -260,6 +252,32 @@ export default function MapScreen() {
     setSuggestions([]);
   };
 
+  const filterPolygonsByRegion = (region: Region) => {
+    const margin = 0.5;
+    const { latitude, longitude, latitudeDelta, longitudeDelta } = region;
+
+    const latMin = latitude - latitudeDelta / 2 - margin;
+    const latMax = latitude + latitudeDelta / 2 + margin;
+    const lonMin = longitude - longitudeDelta / 2 - margin;
+    const lonMax = longitude + longitudeDelta / 2 + margin;
+
+    const filtered = parsedStateLandPolygons.filter(polygon =>
+      polygon.coords.some(coord =>
+        coord.latitude >= latMin &&
+        coord.latitude <= latMax &&
+        coord.longitude >= lonMin &&
+        coord.longitude <= lonMax
+      )
+    ).slice(0, MAX_POLYGONS
+    );
+    if (region.latitudeDelta > 1.2 || region.longitudeDelta > 1.2) {
+      setVisiblePolygons([]);
+      return;
+    }
+
+    setVisiblePolygons(filtered);
+  };
+
   useEffect(() => {
     (async () => {
       const saved = await AsyncStorage.getItem('huntPins');
@@ -280,12 +298,15 @@ export default function MapScreen() {
         return;
       }
       let location = await Location.getCurrentPositionAsync({});
-      setRegion({
+      const defaultRegion = {
         latitude: 27.9944,
         longitude: -81.7603,
-        latitudeDelta: 3,
-        longitudeDelta: 3,
-      });
+        latitudeDelta: 0.5,
+        longitudeDelta: 0.5,
+      };
+
+      setRegion(defaultRegion);
+      filterPolygonsByRegion(defaultRegion);
       setIsScreenLoading(false);
     })();
   }, []);
@@ -337,7 +358,7 @@ export default function MapScreen() {
                 }
               }}
               onBlur={() => {
-                setTimeout(() => setSuggestions([]), 100); 
+                setTimeout(() => setSuggestions([]), 100);
               }}
               placeholder="Search for a place"
               placeholderTextColor="#ccc"
@@ -366,7 +387,7 @@ export default function MapScreen() {
                     setSearch(item);
                     setSuggestions([]);
                     handleSearch();
-                    Keyboard.dismiss(); 
+                    Keyboard.dismiss();
                   }}
                   style={{
                     paddingVertical: 8,
@@ -438,6 +459,7 @@ export default function MapScreen() {
           const coords = e.nativeEvent.coordinate;
           setSelectedCoords({ lat: coords.latitude, lon: coords.longitude });
         }}
+        onRegionChangeComplete={handleRegionChangeComplete}
       >
         {pins
           .filter(pin => !filterTag || pin.tag === filterTag)
@@ -452,17 +474,20 @@ export default function MapScreen() {
           ))}
         {marker && <Marker coordinate={marker} />}
 
-        {showBoundaries &&
-          demoPolygons.map(({ id, coords }) => (
-            <Polygon
-              key={id}
-              coordinates={coords}
-              strokeColor="green"
-              fillColor="rgba(0,255,0,0.2)"
-              strokeWidth={2}
-            />
-          ))}
-          
+        {showBoundaries && visiblePolygons.length > 0 &&
+          visiblePolygons
+            .filter(p => p.coords.length > 2)
+            .map(({ id, coords }) => (
+              <Polygon
+                key={id}
+                coordinates={coords}
+                strokeColor="orange"
+                fillColor="rgba(255,165,0,0.2)"
+                strokeWidth={1}
+              />
+            ))
+        }
+
       </MapView>
 
       {activePin && (
