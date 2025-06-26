@@ -134,6 +134,13 @@ const ProfileScreen = () => {
         {status ? <Text style={styles.status}>{status}</Text> : null}
         {loading && <ActivityIndicator size="large" color="#FFD700" />}
       </View>
+
+      <TouchableOpacity
+        style={styles.menuButton}
+        onPress={() => navigation.navigate('DeerHarvestLog')}
+      >
+        <Text style={styles.buttonText}>Log a Deer Harvest</Text>
+      </TouchableOpacity>
     </ImageBackground>
   );
 }
