@@ -105,6 +105,8 @@ export default function MapScreen() {
     }[];
   };
 
+  
+
   useEffect(() => {
     const parsed = (FloridaBoundariesSimplified as GeoJson).features.flatMap((feature, index) => {
       if (!feature.geometry) return [];
@@ -452,7 +454,7 @@ export default function MapScreen() {
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
-        initialRegion={region}
+        region={region}
         showsUserLocation
         showsMyLocationButton={false}
         onLongPress={(e) => {

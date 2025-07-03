@@ -4,15 +4,16 @@ import { Feather } from '@expo/vector-icons';
 import { uploadTestHunt } from '../services/firebaseUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../services/firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { auth } from '../services/firebaseConfig';
-import * as FileSystem from 'expo-file-system';
 import { signOut } from 'firebase/auth';
+import { registerForPushNotificationsAsync, scheduleSeasonNotifications } from './notifications';
+import * as ImagePicker from 'expo-image-picker';
+import * as Notifications from 'expo-notifications';
 
 const ProfileScreen = () => {
   const [status, setStatus] = useState<string>('');
@@ -22,6 +23,7 @@ const ProfileScreen = () => {
   const [journalCount, setJournalCount] = useState<number>(0);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [name, setName] = useState<string>('');
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem('userEmail').then(storedEmail => {
@@ -29,6 +31,9 @@ const ProfileScreen = () => {
         setEmail(storedEmail);
         fetchStats(storedEmail);
       }
+      AsyncStorage.getItem('profileImage').then(uri => {
+        if (uri) setProfileImage(uri);
+      });
     });
   }, []);
 
@@ -43,20 +48,66 @@ const ProfileScreen = () => {
     setJournalCount(journalSnapshot.size);
   };
 
-  //log user out and reset navigation
+  const sendTestNotification = async () => {
+    try {
+      const token = await AsyncStorage.getItem('expoPushToken');
+      if (!token) {
+        Alert.alert('No push token found', 'Please enable notifications first.');
+        return;
+      }
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Test Notification',
+          body: 'This is a test notification from Buck Shot!',
+          data: { test: 'data' },
+        },
+        trigger: null,
+      });
+
+      Alert.alert('Notification sent', 'Check your device for the test notification.');
+    } catch (err) {
+      console.error(err);
+      const message = err instanceof Error ? err.message : String(err);
+      Alert.alert('Error sending notification', message);
+    }
+  };
+
+
   const handleLogout = async () => {
     try {
-      // Sign out Firebase
+
       await signOut(auth);
-      // Clear stored email
+
       await AsyncStorage.removeItem('userEmail');
-      // Reset navigation to AuthLanding
+
       navigation.reset({
         index: 0,
         routes: [{ name: 'AuthLanding' }],
       });
     } catch (err: any) {
       Alert.alert('Logout failed', err.message);
+    }
+  };
+
+  const pickImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission denied', 'Enable photo access in settings.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const uri = result.assets[0].uri;
+      setProfileImage(uri);
+      await AsyncStorage.setItem('profileImage', uri);
     }
   };
 
@@ -82,10 +133,27 @@ const ProfileScreen = () => {
   };
 
 
+  useEffect(() => {
+    registerForPushNotificationsAsync().then(() => {
+      scheduleSeasonNotifications();
+    });
+  }, []);
+
+
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
       <View style={styles.overlay} />
       <View style={styles.container}>
+        <TouchableOpacity onPress={pickImage}>
+          <Image
+            source={
+              profileImage
+                ? { uri: profileImage }
+                : require('../../assets/placeholder_user.png') // Add a default icon here
+            }
+            style={styles.profilePic}
+          />
+        </TouchableOpacity>
         <Feather name="user" size={80} color="#FFD700" />
         <Text style={styles.title}>My Profile </Text>
 
@@ -118,11 +186,14 @@ const ProfileScreen = () => {
             color="#FFA500"
             disabled={loading}
           />
+
+          <TouchableOpacity
+            style={[styles.menuButton, { backgroundColor: '#2f95dc' }]}
+            onPress={sendTestNotification}
+          >
+            <Text style={styles.buttonText}>Send Test Notification</Text>
+          </TouchableOpacity>
           <View style={{ marginVertical: 8 }} />
-          <Button
-            title="Edit Profile"
-            onPress={() => Alert.alert('Coming Soon', 'Edit Profile is not available yet.')}
-          />
           <View style={{ marginVertical: 8 }} />
           <Button
             title="Logout"
@@ -209,5 +280,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
     color: '#fff',
     fontStyle: 'italic',
+  },
+  profilePic: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    marginBottom: 10,
   },
 });
