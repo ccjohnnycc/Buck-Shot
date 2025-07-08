@@ -3,7 +3,6 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FL_SEASONS from './CalendarScreen';
-import { Switch } from 'react-native';
 
 type SeasonKey = keyof typeof FL_SEASONS;
 type SeasonRange = { start: string; end: string };
@@ -73,7 +72,7 @@ for (const key of species) {
                     },
                     trigger: {
                         seconds: Math.floor((notifyStart.getTime() - Date.now()) / 1000),
-                        channelId: 'default', // required on Android
+                        channelId: 'default', 
                     }
                 });
             }
