@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { collection, getDocs, query, where, deleteDoc, doc } from 'firebase/firestore';
-import { db, auth } from '../services/firebaseConfig';
+import { db, auth } from '../services/firebaseconfig';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import TagInput from '../components/TagInput';

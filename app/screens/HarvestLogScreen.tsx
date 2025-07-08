@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet 
 import { Feather } from '@expo/vector-icons';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import { app } from '../services/firebaseConfig';
+import { app } from '../services/firebaseconfig';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';

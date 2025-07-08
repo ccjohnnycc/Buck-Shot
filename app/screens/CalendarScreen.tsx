@@ -20,7 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Calendar } from 'react-native-calendars';
 import { Picker } from '@react-native-picker/picker';
 import SunCalc from 'suncalc';
-import { auth } from '../services/firebaseConfig';
+import { auth } from '../services/firebaseconfig';
 
 // Florida season spans
 type Season = { start: string; end: string };

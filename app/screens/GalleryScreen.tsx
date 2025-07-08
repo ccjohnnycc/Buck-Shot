@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { Query, DocumentData, collection, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore';
-import { auth, db } from '../services/firebaseConfig';
+import { auth, db } from '../services/firebaseconfig';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import TagInput from '../components/TagInput';
 import { Feather } from '@expo/vector-icons';

@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth } from '../services/firebaseConfig';
+import { auth } from '../services/firebaseconfig';
 
 type HomeNavProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 

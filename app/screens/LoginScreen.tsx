@@ -5,7 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../services/firebaseConfig';
+import { auth } from '../services/firebaseconfig';
 
 
 type LoginNavProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
