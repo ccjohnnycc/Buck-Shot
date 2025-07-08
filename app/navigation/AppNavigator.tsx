@@ -15,10 +15,11 @@ import JournalEntryForm from '../screens/JournalEntryForm';
 import MainTabs from './MainTabs';
 import PhotoViewerScreen from '../screens/PhotoViewerScreen';
 import OfflineMapsScreen from '../screens/OfflineMapsScreen';
+import DeerHarvestLogScreen from '../screens/HarvestLogScreen';
 
 export type RootStackParamList = {
   Main: undefined;
-  //Home: undefined;
+  DeerHarvestLog: undefined;
   Profile: undefined;
   Measure: undefined;
   Login: undefined;
@@ -66,6 +67,7 @@ export default function AppNavigator() {
         <Stack.Screen name="JournalEntryForm" component={JournalEntryForm} options={{headerShown: false}} />
         <Stack.Screen name="PhotoViewer" component={PhotoViewerScreen} />
         <Stack.Screen name="OfflineMaps" component={OfflineMapsScreen} options={{ headerShown: false }}/>
+        <Stack.Screen name="DeerHarvestLog" component={DeerHarvestLogScreen} options={{ headerShown: false }} />
         {/*<Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Measure" component={MeasureScreen} options={{ headerShown: false }} />*/}
       </Stack.Navigator>
