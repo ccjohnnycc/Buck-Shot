@@ -1,248 +1,211 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Button, ImageBackground } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  FlatList,
+  ImageBackground,
+  Dimensions,
+  TouchableOpacity,
+} from 'react-native';
 import * as Location from 'expo-location';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
+const { width } = Dimensions.get('window');
 
-const weatherCodeMap: Record<number, { label: string; icon: string }> = {
-  0: { label: 'Clear sky', icon: '☀️' },
-  1: { label: 'Mainly clear', icon: '🌤️' },
-  2: { label: 'Partly cloudy', icon: '⛅' },
-  3: { label: 'Overcast', icon: '☁️' },
-  45: { label: 'Fog', icon: '🌫️' },
-  48: { label: 'Depositing rime fog', icon: '🌫️' },
-  51: { label: 'Light drizzle', icon: '🌦️' },
-  53: { label: 'Drizzle', icon: '🌦️' },
-  55: { label: 'Dense drizzle', icon: '🌧️' },
-  61: { label: 'Slight rain', icon: '🌦️' },
-  63: { label: 'Moderate rain', icon: '🌧️' },
-  65: { label: 'Heavy rain', icon: '🌧️' },
-  71: { label: 'Light snow', icon: '🌨️' },
-  73: { label: 'Snow', icon: '🌨️' },
-  75: { label: 'Heavy snow', icon: '❄️' },
-  80: { label: 'Rain showers', icon: '🌦️' },
-  95: { label: 'Thunderstorm', icon: '⛈️' },
+// Map weather codes to labels, emojis, and gradients (tuple for TS)
+const weatherCodeMap: Record<number, { label: string; emoji: string; gradient: [string, string] }> = {
+  0: { label: 'Clear ', emoji: '☀️', gradient: ['#6190E8', '#A7BFE8'] },
+  1: { label: 'Mostly Clear ', emoji: '🌤️', gradient: ['#6190E8', '#A7BFE8'] },
+  2: { label: 'Partly Cloudy ', emoji: '⛅', gradient: ['#6190E8', '#A7BFE8'] },
+  3: { label: 'Overcast ', emoji: '☁️', gradient: ['#6190E8', '#A7BFE8'] },
+  45: { label: 'Fog ', emoji: '🌫️', gradient: ['#3E5151', '#DECBA4'] },
+  48: { label: 'Rime Fog ', emoji: '🌫️', gradient: ['#616161', '#9BC5C3'] },
+  51: { label: 'Light Drizzle ', emoji: '🌦️', gradient: ['#4DA0B0', '#D39D38'] },
+  53: { label: 'Drizzle ', emoji: '🌦️', gradient: ['#3A7BD5', '#3A6073'] },
+  55: { label: 'Dense Drizzle ', emoji: '🌧️', gradient: ['#2C3E50', '#4CA1AF'] },
+  61: { label: 'Rain ', emoji: '🌧️', gradient: ['#00C6FB', '#005BEA'] },
+  63: { label: 'Moderate Rain ', emoji: '🌧️', gradient: ['#005BEA', '#00C6FB'] },
+  65: { label: 'Heavy Rain ', emoji: '🌧️', gradient: ['#000046', '#1CB5E0'] },
+  71: { label: 'Light Snow ', emoji: '🌨️', gradient: ['#83A4D4', '#B6FBFF'] },
+  73: { label: 'Snow ', emoji: '❄️', gradient: ['#2980B9', '#6DD5FA'] },
+  75: { label: 'Heavy Snow ', emoji: '❄️', gradient: ['#000428', '#004E92'] },
+  80: { label: 'Showers ', emoji: '🌦️', gradient: ['#373B44', '#4286F4'] },
+  95: { label: 'Thunderstorm ', emoji: '⛈️', gradient: ['#0F2027', '#203A43'] },
 };
 
 type WeatherData = {
-  current?: {
-    temperature_2m?: number;
-    apparent_temperature?: number;
-    weather_code?: number;
-    wind_speed_10m?: number;
-    wind_direction_10m?: number;
-    wind_gusts_10m?: number;
-    is_day?: number;
-    precipitation?: number;
-    relative_humidity_2m?: number;
+  current_weather: {
+    temperature: number;
+    windspeed: number;
+    winddirection: number;
+    weathercode: number;
+    time: string;
   };
-  hourly?: {
+  hourly: {
     time: string[];
     temperature_2m: number[];
     precipitation_probability: number[];
-    rain: number[];
-    wind_speed_10m: number[];
-    wind_gusts_10m: number[];
-    wind_direction_10m: number[];
-    cloud_cover: number[];
-    relative_humidity_2m: number[];
   };
-   daily?: {
+  daily: {
+    time: string[];
     temperature_2m_max: number[];
     temperature_2m_min: number[];
-    sunrise: string[];
-    sunset: string[];
-   };
+  };
 };
 
 export default function WeatherScreen() {
+  const navigation = useNavigation();
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const getWeather = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setError('Permission to access location denied');
-        setLoading(false);
-        return;
-      }
-      let location = await Location.getCurrentPositionAsync({});
-      const latitude = location.coords.latitude;
-      const longitude = location.coords.longitude;
+  // compute local date & hour keys
+  const now = new Date();
+  const localDateKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const localHourKey = `${localDateKey}T${String(now.getHours()).padStart(2, '0')}:00`;
 
-      const url ='https://api.open-meteo.com/v1/forecast?latitude=28.6&longitude=-81.3392&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset&hourly=temperature_2m,apparent_temperature,precipitation_probability,rain,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cloud_cover,relative_humidity_2m&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,precipitation,relative_humidity_2m&timezone=auto&wind_speed_unit=kn&temperature_unit=fahrenheit&precipitation_unit=inch';
+  // selected day state, initial to today
+  const [selectedDailyDate, setSelectedDailyDate] = useState<string>(localDateKey);
 
-      const response = await fetch(url);
-      const data = await response.json();
-      setWeather(data);
-    } catch (err) {
-      setError('Could not fetch weather');
-    }
-    setLoading(false);
-  };
+  // reset to today when screen focused
+  useFocusEffect(
+    useCallback(() => {
+      setSelectedDailyDate(localDateKey);
+    }, [localDateKey])
+  );
 
   useEffect(() => {
-    getWeather();
+    (async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') throw new Error('Location permission denied');
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const url =
+          `https://api.open-meteo.com/v1/forecast?latitude=${loc.coords.latitude}&longitude=${loc.coords.longitude}` +
+          `&current_weather=true&hourly=temperature_2m,precipitation_probability` +
+          `&daily=temperature_2m_max,temperature_2m_min&timezone=${encodeURIComponent(tz)}` +
+          `&temperature_unit=fahrenheit&precipitation_unit=inch`;
+        const res = await fetch(url);
+        const data = await res.json();
+        setWeather(data);
+        setSelectedDailyDate(data.daily.time.includes(localDateKey)
+          ? localDateKey : data.daily.time[0]);
+      } catch {
+        setError('Could not fetch weather');
+      }
+      setLoading(false);
+    })();
   }, []);
 
-  const getWeatherDesc = (code?: number) => {
-    if (code == null) return { label: 'Unknown', icon: '❔' };
-    return weatherCodeMap[code] || { label: 'Unknown', icon: '❔' };
-  };
+  if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" color="#FFD700" />;
+  if (error) return <View style={styles.center}><Text style={styles.error}>{error} </Text></View>;
+  if (!weather) return null;
 
-  const current = weather?.current || {};
-  const { label, icon } = getWeatherDesc(current.weather_code);
+  const { current_weather: cw, hourly, daily } = weather;
+  const wc = weatherCodeMap[cw.weathercode] || weatherCodeMap[0];
 
-  // For hourly data, get nearest hour
-  const getCurrentHourIndex = () => {
-    if (!weather || !weather.hourly) return 0;
-    const now = new Date();
-    const hours = weather.hourly.time;
-    return hours.findIndex(h => h.startsWith(now.toISOString().slice(0, 13))) || 0;
-  };
-  const hourIdx = getCurrentHourIndex();
-  const hourly = weather?.hourly;
+  // find index for selectedDailyDate
+  const dailyIndex = daily.time.indexOf(selectedDailyDate);
+  const validDailyIndex = dailyIndex >= 0 ? dailyIndex : 0;
+
+  // hourlyIndices for date
+  const dayIndices = hourly.time
+    .map((t, i) => t.startsWith(selectedDailyDate) ? i : -1)
+    .filter(i => i >= 0);
+  let startPos = 0;
+  if (selectedDailyDate === localDateKey) {
+    const pos = dayIndices.indexOf(hourly.time.indexOf(localHourKey));
+    startPos = pos >= 0 ? pos : 0;
+  }
+  const hourlyIndices = dayIndices.slice(startPos, startPos + 12);
 
   return (
-    <ImageBackground
-      source={require('../../assets/background_image.png')}
-      style={styles.background}
-      resizeMode="cover"
-    >
-      <View style={styles.overlay} />
+    <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
+      <LinearGradient colors={wc.gradient} style={styles.overlay} start={[0, 0]} end={[1, 1]} />
       <View style={styles.container}>
-        {loading && <ActivityIndicator size="large" />}
-        {error !== '' && <Text style={styles.error}>{error}</Text>}
 
-        {/* Current Weather */}
-        {weather && weather.current && (
-          <View style={styles.card}>
-            <Text style={styles.icon}>{icon}</Text>
-            <Text style={styles.temp}>{Math.round(current.temperature_2m ?? 0)}°F</Text>
-            <Text style={styles.feels}>Feels like {Math.round(current.apparent_temperature ?? 0)}°F</Text>
-            <Text style={styles.desc}>{label}</Text>
+        {/* Current Weather Card */}
+        <View style={styles.currentCard} >
+          <Text style={styles.emoji}>{wc.emoji} </Text>
+          <Text style={styles.temp}>{Math.round(cw.temperature)}°F </Text>
+          <Text style={styles.desc}>{wc.label} </Text>
+          <Text style={styles.detail} >
+            High {Math.round(weather!.daily.temperature_2m_max[0])}° / Low {Math.round(weather!.daily.temperature_2m_min[0])}° </Text>
+          <Text style={styles.wind}> 💨 {cw.windspeed} mph  {cw.winddirection}° </Text>
+        </View>
 
-            {weather?.daily && (
-              <Text style={styles.details}>
-                High: {Math.round(weather.daily.temperature_2m_max?.[0] ?? 0)}°F | Low: {Math.round(weather.daily.temperature_2m_min?.[0] ?? 0)}°F
-              </Text>
-            )}
+        {/* Hourly */}
+        <FlatList
+          data={hourlyIndices}
+          horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.hourlyList}
+          keyExtractor={i => String(i)}
+          renderItem={({ item: i }) => {
+            const hr = new Date(hourly.time[i]).getHours();
+            return (
+              <View style={styles.hourItem}>
+                <Text style={styles.hourText}>{hr}:00 </Text>
+                <Text style={styles.hourEmoji}>{wc.emoji} </Text>
+                <Text style={styles.hourTemp}>{Math.round(hourly.temperature_2m[i])}° </Text>
+                <Text style={styles.hourDetail}>{hourly.precipitation_probability[i]}% </Text>
+              </View>
+            );
+          }}
+        />
 
-            {weather?.daily && (
-              <Text style={styles.details}>
-                Sunrise: {weather.daily.sunrise?.[0]?.slice(11, 16)} | Sunset: {weather.daily.sunset?.[0]?.slice(11, 16)}
-              </Text>
-            )}
-
-            <Text style={styles.details}>
-              Wind: {current.wind_speed_10m} knots {current.wind_direction_10m !== undefined ? `(${current.wind_direction_10m}°)` : ''}
-            </Text>
-            <Text style={styles.details}>
-              Gusts: {current.wind_gusts_10m} knots
-            </Text>
-            <Text style={styles.details}>
-              Precipitation: {current.precipitation ?? 0} in
-            </Text>
-            <Text style={styles.details}>
-              Humidity: {current.relative_humidity_2m ?? '--'}%
-            </Text>
-          </View>
-        )}
-
-        { }
-        {hourly && (
-          <View style={styles.hourlyCard}>
-            <Text style={styles.hourlyTitle}>Next Hour</Text>
-            <Text style={styles.details}>
-              Chance of rain: {hourly.precipitation_probability?.[hourIdx] ?? 0}%
-            </Text>
-            <Text style={styles.details}>
-              Humidity: {hourly.relative_humidity_2m?.[hourIdx] ?? 0}%
-            </Text>
-            <Text style={styles.details}>
-              Clouds: {hourly.cloud_cover?.[hourIdx] ?? 0}%
-            </Text>
-            <Text style={styles.details}>
-              Temp: {Math.round(hourly.temperature_2m?.[hourIdx] ?? 0)}°F
-            </Text>
-            <Text style={styles.details}>
-              Rain: {hourly.rain?.[hourIdx] ?? 0} in
-            </Text>
-          </View>
-        )}
-
-        <Button title="Refresh" onPress={getWeather} />
+        {/* Daily */}
+        <FlatList
+          data={daily.time} horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.dailyList}
+          keyExtractor={d => d}
+          renderItem={({ item: dateStr }) => {
+            const idx = daily.time.indexOf(dateStr);
+            const dayLabel = new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' });
+            const isSel = dateStr === selectedDailyDate;
+            return (
+              <TouchableOpacity onPress={() => setSelectedDailyDate(dateStr)} >
+                <View style={[styles.dailyItem, isSel && styles.dailySelected]} >
+                  <Text style={styles.dayText}>{dayLabel} </Text>
+                  <Text style={styles.dailyTemp}>{Math.round(daily.temperature_2m_max[idx])}° </Text>
+                  <Text style={styles.dailyMin}>{Math.round(daily.temperature_2m_min[idx])}° </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+        />
       </View>
     </ImageBackground>
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1, width: '100%' },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 18,
-  },
-  card: {
-    backgroundColor: 'rgba(30,30,30,0.8)',
-    padding: 24,
-    borderRadius: 18,
-    alignItems: 'center',
-    marginBottom: 24,
-    width: 320,
-    maxWidth: '100%',
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 8,
-  },
-  hourlyCard: {
-    backgroundColor: 'rgba(30,30,30,0.7)',
-    padding: 16,
-    borderRadius: 14,
-    alignItems: 'flex-start',
-    marginBottom: 22,
-    width: 320,
-    maxWidth: '100%',
-  },
-  icon: {
-    fontSize: 64,
-    marginBottom: 12,
-  },
-  temp: {
-    fontSize: 38,
-    color: '#FFD700',
-    fontWeight: 'bold',
-  },
-  feels: {
-    fontSize: 18,
-    color: '#fff',
-    marginBottom: 2,
-  },
-  desc: {
-    fontSize: 20,
-    color: '#fff',
-    marginBottom: 12,
-  },
-  details: {
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  hourlyTitle: {
-    color: '#FFD700',
-    fontWeight: 'bold',
-    fontSize: 18,
-    marginBottom: 4,
-  },
-  error: { color: 'red', marginBottom: 10 },
+const styles=StyleSheet.create({
+  background:{flex:1},
+  overlay:{...StyleSheet.absoluteFillObject,opacity:0.6},
+  container:{flex:1,paddingTop:50,alignItems:'center'},
+  center:{flex:1,justifyContent:'center',alignItems:'center'},
+  error:{color:'red'},
+  currentCard:{backgroundColor:'rgba(255,255,255,0.2)',borderRadius:18,padding:20,alignItems:'center',marginBottom:24,width:width*0.9,shadowColor:'#000',shadowOffset:{width:0,height:6},shadowOpacity:0.3,shadowRadius:8},
+  emoji:{fontSize:64,marginBottom:12},
+  temp:{fontSize:48,color:'#fff',fontWeight:'bold'},
+  desc:{fontSize:24,color:'#fff',marginVertical:4},
+  detail:{fontSize:16,color:'#fff'},
+  wind:{fontSize:16,color:'#fff',marginTop:4},
+  hourlyList:{paddingHorizontal:10},
+  hourItem:{alignItems:'center',marginRight:12},
+  hourText:{color:'#fff'},
+  hourEmoji:{fontSize:24},
+  hourTemp:{color:'#fff',fontWeight:'600'},
+  hourDetail:{color:'#fff',fontSize:12},
+  dailyList:{paddingHorizontal:10,marginTop:20},
+  dailyItem:{alignItems:'center',marginRight:16,padding:10,backgroundColor:'rgba(255,255,255,0.2)',borderRadius:12},
+  dailySelected:{borderColor:'#FFD700',borderWidth:2},
+  dayText:{color:'#fff',marginBottom:4},
+  dailyTemp:{color:'#FFD700',fontWeight:'bold'},
+  dailyMin:{color:'#fff'},
 });
