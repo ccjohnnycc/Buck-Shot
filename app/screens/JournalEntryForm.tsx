@@ -148,9 +148,9 @@ useEffect(() => {
   <Feather name="arrow-left" size={24} color="#fff" />
 </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Hunt Journal</Text>
+        <Text style={styles.title}>Hunt Journal </Text>
 
-        <Text style={styles.authorLabel}>Logged in as {userEmail}</Text>
+        <Text style={styles.authorLabel}>Logged in as {userEmail} </Text>
 
         <TextInput
           style={styles.input}
