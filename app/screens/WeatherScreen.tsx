@@ -56,6 +56,11 @@ type WeatherData = {
   };
 };
 
+function degToCompass(deg: number): string {
+  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  return directions[Math.round(deg / 45) % 8];
+}
+
 export default function WeatherScreen() {
   const navigation = useNavigation();
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -64,7 +69,16 @@ export default function WeatherScreen() {
 
   // compute local date & hour keys
   const now = new Date();
-  const localDateKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const localOffset = now.getTimezoneOffset() * 60000; // in ms
+  const localDateKey = new Date(now.getTime() - localOffset).toISOString().split('T')[0];
+
+  function getFilteredDailyTime(apiDates: string[]): string[] {
+    const todayIndex = apiDates.findIndex(d => d === localDateKey);
+    return todayIndex >= 0 ? apiDates.slice(todayIndex) : apiDates;
+  }
+
+
+
   const localHourKey = `${localDateKey}T${String(now.getHours()).padStart(2, '0')}:00`;
 
   // selected day state, initial to today
@@ -94,12 +108,16 @@ export default function WeatherScreen() {
         const res = await fetch(url);
         const data = await res.json();
         setWeather(data);
-        setSelectedDailyDate(data.daily.time.includes(localDateKey)
-          ? localDateKey : data.daily.time[0]);
+        const filteredTime = getFilteredDailyTime(data.daily.time);
+        setSelectedDailyDate(filteredTime[0]);
+        console.log('Local date:', localDateKey);
+        console.log('API daily time:', data.daily.time);
+
       } catch {
         setError('Could not fetch weather');
       }
       setLoading(false);
+
     })();
   }, []);
 
@@ -111,8 +129,11 @@ export default function WeatherScreen() {
   const wc = weatherCodeMap[cw.weathercode] || weatherCodeMap[0];
 
   // find index for selectedDailyDate
-  const dailyIndex = daily.time.indexOf(selectedDailyDate);
-  const validDailyIndex = dailyIndex >= 0 ? dailyIndex : 0;
+  const filteredDailyTime = getFilteredDailyTime(daily.time);
+
+
+  const validDailyIndex = filteredDailyTime.indexOf(selectedDailyDate);
+
 
   // hourlyIndices for date
   const dayIndices = hourly.time
@@ -136,8 +157,8 @@ export default function WeatherScreen() {
           <Text style={styles.temp}>{Math.round(cw.temperature)}°F </Text>
           <Text style={styles.desc}>{wc.label} </Text>
           <Text style={styles.detail} >
-            High {Math.round(weather!.daily.temperature_2m_max[0])}° / Low {Math.round(weather!.daily.temperature_2m_min[0])}° </Text>
-          <Text style={styles.wind}> 💨 {cw.windspeed} mph  {cw.winddirection}° </Text>
+            High {Math.round(weather.daily.temperature_2m_max[validDailyIndex])}° / Low {Math.round(weather.daily.temperature_2m_min[validDailyIndex])}° </Text>
+          <Text style={styles.wind}> 💨 {cw.windspeed} mph  {degToCompass(cw.winddirection)} </Text>
         </View>
 
         {/* Hourly */}
@@ -161,12 +182,15 @@ export default function WeatherScreen() {
 
         {/* Daily */}
         <FlatList
-          data={daily.time} horizontal showsHorizontalScrollIndicator={false}
+          data={filteredDailyTime} horizontal showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.dailyList}
           keyExtractor={d => d}
           renderItem={({ item: dateStr }) => {
             const idx = daily.time.indexOf(dateStr);
-            const dayLabel = new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' });
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const localDate = new Date(year, month - 1, day);
+            const dayLabel = localDate.toLocaleDateString('en-US', { weekday: 'short' });
+
             const isSel = dateStr === selectedDailyDate;
             return (
               <TouchableOpacity onPress={() => setSelectedDailyDate(dateStr)} >
