@@ -4,7 +4,7 @@ import * as FileSystem from 'expo-file-system';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { Query, DocumentData, collection, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore';
+import { Query, DocumentData, collection, getDocs, deleteDoc, doc, query, where, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebaseconfig';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import TagInput from '../components/TagInput';
@@ -34,13 +34,12 @@ export default function GalleryScreen() {
 
 
   const navigation = useNavigation<NavProp>();
-  const route = useRoute<GalleryRouteProp>();
-  const { filterTags = [] } = route.params || {};
+  const [filterTags, setFilterTags] = useState<string[]>([]);
 
   const [editingTagsFolder, setEditingTagsFolder] = useState<string | null>(null);
   const [tempTags, setTempTags] = useState<string[]>([]);
   const [showTagModal, setShowTagModal] = useState(false);
-  
+
 
   // LOAD HUNT FOLDERS
   const loadHuntFolders = async () => {
@@ -49,7 +48,7 @@ export default function GalleryScreen() {
       if (!user) return;
 
       const baseRef = collection(db, `users/${user.uid}/hunts`);
-      const huntsRef = Array.isArray(filterTags) && filterTags.length > 0
+      const huntsRef = filterTags.length > 0
         ? query(baseRef, where('tags', 'array-contains-any', filterTags))
         : baseRef;
 
@@ -63,19 +62,19 @@ export default function GalleryScreen() {
         name.startsWith('hunt_') && !name.endsWith('.jpg')
       );
       let filteredHuntFolders = await Promise.all(huntFolders.map(async folder => {
-  const folderUri = FileSystem.documentDirectory + folder + '/';
-  try {
-    const metadataStr = await FileSystem.readAsStringAsync(folderUri + 'metadata.json');
-    const metadata = JSON.parse(metadataStr);
-    const tags = metadata.tags || [];
-    const hasMatch = filterTags.length === 0 || tags.some((tag: string) => filterTags.includes(tag))
-    return hasMatch ? folder : null;
-  } catch {
-    return null;
-  }
-}));
+        const folderUri = FileSystem.documentDirectory + folder + '/';
+        try {
+          const metadataStr = await FileSystem.readAsStringAsync(folderUri + 'metadata.json');
+          const metadata = JSON.parse(metadataStr);
+          const tags = metadata.tags || [];
+          const hasMatch = filterTags.length === 0 || tags.some((tag: string) => filterTags.includes(tag))
+          return hasMatch ? folder : null;
+        } catch {
+          return null;
+        }
+      }));
 
-const validFolders = filteredHuntFolders.filter(Boolean) as string[];
+      const validFolders = filteredHuntFolders.filter(Boolean) as string[];
 
       const huntData = await Promise.all(huntFolders.map(async folder => {
         const folderUri = FileSystem.documentDirectory + folder + '/';
@@ -123,7 +122,7 @@ const validFolders = filteredHuntFolders.filter(Boolean) as string[];
   // HANDLE: DELETE FOLDER
   const handleDelete = async (folder: string) => {
     Alert.alert(
-      "Delete Hunt" ,
+      "Delete Hunt",
       "Are you sure you want to delete this hunt and all its photos?",
       [
         { text: "Cancel", style: "cancel" },
@@ -170,12 +169,20 @@ const validFolders = filteredHuntFolders.filter(Boolean) as string[];
       <View style={styles.overlay} />
 
       <ScrollView contentContainerStyle={styles.container}>
+        <View style={{ width: '90%', marginTop: 50, marginBottom: -60 }}>
+          <TagInput
+            tags={filterTags}
+            setTags={setFilterTags}
+            placeholder="Filter by tags…"
+          />
+        </View>
+
         <View style={{ marginBottom: 20 }}>
-          <Text style={styles.title}>Your Hunts</Text>
+          <Text style={styles.title}>Your Hunts </Text>
         </View>
 
         {huntFolders.length === 0 ? (
-          <Text style={styles.message}>No saved hunts found.</Text>
+          <Text style={styles.message}>No saved hunts found. </Text>
         ) : (
           huntFolders.map((hunt, index) => (
             <TouchableOpacity
@@ -185,34 +192,33 @@ const validFolders = filteredHuntFolders.filter(Boolean) as string[];
             >
               <View style={{ padding: 10 }}>
                 <Text style={styles.huntTitle}>{hunt.title}</Text>
+                {(hunt.tags && hunt.tags.length > 0) && (
+                  <View style={styles.tagFooter}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      {(hunt.tags ?? []).map((tag, i) => (
+                        <View key={i} style={styles.tagChip}>
+                          <Text style={styles.tagText}>{tag}</Text>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
               </View>
               <Image source={{ uri: hunt.previewUri }} style={styles.image} />
-
-              {hunt.tags && hunt.tags.length > 0 && (
-                <View style={styles.tagFooter}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {hunt.tags.map((tag, i) => (
-                      <View key={i} style={styles.tagChip}>
-                        <Text style={styles.tagText}>{tag}</Text>
-                      </View>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
               <View style={styles.infoPanel}>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
                   <TouchableOpacity onPress={() => handleRename(hunt.folder)}>
-                    <Text style={[styles.imageLabel, { textDecorationLine: 'underline' }]}>Rename</Text>
+                    <Text style={[styles.imageLabel, { textDecorationLine: 'underline' }]}>Rename </Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDelete(hunt.folder)}>
                     <Text style={[styles.imageLabel, { textDecorationLine: 'underline', color: '#ff4444' }]}>Delete </Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => {
                     setEditingTagsFolder(hunt.folder);
-                    setTempTags(hunt.tags || []); 
+                    setTempTags(hunt.tags || []);
                     setShowTagModal(true);
                   }}>
-                    <Text style={[styles.imageLabel, { textDecorationLine: 'underline', color: '#00d9ff' }]}>Tags</Text>
+                    <Text style={[styles.imageLabel, { textDecorationLine: 'underline', color: '#00d9ff' }]}>Tags </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -279,28 +285,41 @@ const validFolders = filteredHuntFolders.filter(Boolean) as string[];
             <Text style={styles.modalTitle}>Edit Tags</Text>
             <TagInput tags={tempTags} setTags={setTempTags} placeholder="Add tags like '10-point' or 'morning'" />
             <View style={styles.modalButtons}>
-              <Button title="Done" onPress={async () => {
-                if (editingTagsFolder) {
-                  const folderUri = FileSystem.documentDirectory + editingTagsFolder + '/';
-                  try {
-                    let metadata = { title: 'Untitled Hunt', tags: tempTags };
+              <Button
+                title="Done"
+                onPress={async () => {
+                  if (editingTagsFolder) {
+                    const folderUri = FileSystem.documentDirectory + editingTagsFolder + '/';
 
-                    const info = await FileSystem.getInfoAsync(folderUri + 'metadata.json');
-                    if (info.exists) {
-                      const existing = await FileSystem.readAsStringAsync(folderUri + 'metadata.json');
-                      metadata = { ...JSON.parse(existing), tags: tempTags };
+                    let metadata = { title: 'Untitled Hunt', tags: tempTags };
+                    try {
+                      const info = await FileSystem.getInfoAsync(folderUri + 'metadata.json');
+                      if (info.exists) {
+                        const existing = JSON.parse(await FileSystem.readAsStringAsync(folderUri + 'metadata.json'));
+                        metadata = { ...existing, tags: tempTags };
+                      }
+                    } catch { }
+                    await FileSystem.writeAsStringAsync(folderUri + 'metadata.json', JSON.stringify(metadata));
+
+                    const user = auth.currentUser;
+                    if (user) {
+                      const huntsRef = collection(db, `users/${user.uid}/hunts`);
+                      const q = query(huntsRef, where('folderName', '==', editingTagsFolder));
+                      const snap = await getDocs(q);
+                      if (snap.docs.length) {
+                        const docRef = doc(db, `users/${user.uid}/hunts`, snap.docs[0].id);
+                        await updateDoc(docRef, { tags: tempTags });
+                      }
                     }
 
-                    await FileSystem.writeAsStringAsync(folderUri + 'metadata.json', JSON.stringify(metadata));
                     await loadHuntFolders();
-                  } catch (err) {
-                    console.error('Failed to save tags:', err);
                   }
-                }
-                setShowTagModal(false);
-                setEditingTagsFolder(null);
-                setTempTags([]);
-              }} />
+                  setShowTagModal(false);
+                  setEditingTagsFolder(null);
+                  setTempTags([]);
+                }}
+                color="#FFD700"
+              />
             </View>
           </View>
         </View>
@@ -423,13 +442,13 @@ const styles = StyleSheet.create({
     borderColor: '#333',
   },
   backButton: {
-  position: 'absolute',
-  top: 30,
-  left: 10,
-  paddingVertical: 6,
-  paddingHorizontal: 14,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  borderRadius: 20,
-  zIndex: 10,
-},
+    position: 'absolute',
+    top: 30,
+    left: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+    zIndex: 10,
+  },
 });
