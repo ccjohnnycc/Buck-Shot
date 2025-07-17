@@ -45,11 +45,7 @@ useEffect(() => {
         <Image source={icon} style={styles.iconImage} resizeMode="contain" />
 
         <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.buttonText}>Log in</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Signup')}>
-          <Text style={styles.buttonText}>Sign up</Text>
+          <Text style={styles.buttonText}>Sign in </Text>
         </TouchableOpacity>
 
         <Text style={styles.orText}>OR </Text>
