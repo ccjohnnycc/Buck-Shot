@@ -9,7 +9,7 @@ import MapScreen from '../screens/MapScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 
 type TabParamList = {
-    Measure: undefined;
+    Capture: undefined;
     Weather: undefined;
     Map: undefined; 
     Calendar: undefined;
@@ -26,7 +26,7 @@ export default function MainTabs() {
                 headerShown: false, tabBarIcon: ({ color, size }) => {
                     let iconName: React.ComponentProps<typeof Ionicons>['name'] = 'help-circle';
 
-                    if (route.name === 'Measure') {
+                    if (route.name === 'Capture') {
                         iconName = 'scan-outline';
                     } else if (route.name === 'Weather') {
                         iconName = 'rainy-outline';
@@ -47,7 +47,7 @@ export default function MainTabs() {
         >
             <Tab.Screen name="Map" component={MapScreen} />
             <Tab.Screen name="Weather" component={WeatherScreen} />
-            <Tab.Screen name="Measure" component={MeasureScreen} />
+            <Tab.Screen name="Capture" component={MeasureScreen} />
             <Tab.Screen name="Calendar" component={CalendarScreen} />
             <Tab.Screen name="Profile" component={ProfileScreen} />
         </Tab.Navigator>
