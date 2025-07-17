@@ -38,7 +38,6 @@ export default function JournalListScreen() {
     }
   };
 
-
   useEffect(() => {
     fetchEntries();
   }, [filterTags]);
