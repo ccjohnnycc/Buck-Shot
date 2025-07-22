@@ -69,26 +69,26 @@ export default function DeerHarvestLogScreen() {
                     <Text style={styles.label}>Antlered or Antlerless?</Text>
                     <View style={styles.row}>
                         <TouchableOpacity onPress={() => setAntlered(true)} style={[styles.option, antlered && styles.selected]}>
-                            <Text>Antlered</Text>
+                            <Text>Antlered </Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => setAntlered(false)} style={[styles.option, !antlered && styles.selected]}>
-                            <Text>Antlerless</Text>
+                            <Text>Antlerless </Text>
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={styles.label}>Sex:</Text>
+                    <Text style={styles.label}>Sex: </Text>
                     <View style={styles.row}>
                         <TouchableOpacity onPress={() => setSex('Male')} style={[styles.option, sex === 'Male' && styles.selected]}>
-                            <Text>Male</Text>
+                            <Text>Male </Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => setSex('Female')} style={[styles.option, sex === 'Female' && styles.selected]}>
-                            <Text>Female</Text>
+                            <Text>Female </Text>
                         </TouchableOpacity>
                     </View>
 
                     {antlered && (
                         <>
-                            <Text style={styles.label}>Number of Antler Points:</Text>
+                            <Text style={styles.label}>Number of Antler Points: </Text>
                             <TextInput
                                 value={antlerPoints}
                                 onChangeText={setAntlerPoints}
@@ -97,9 +97,9 @@ export default function DeerHarvestLogScreen() {
                             />
                         </>
                     )}
-                    <Text style={styles.label}>Harvest Date:</Text>
+                    <Text style={styles.label}>Harvest Date: </Text>
                     <Pressable onPress={() => setShowPicker(true)} style={[styles.input, { justifyContent: 'center' }]}>
-                        <Text>{harvestDate.toDateString()}</Text>
+                        <Text>{harvestDate.toDateString()} </Text>
                     </Pressable>
 
                     {showPicker && (
@@ -113,17 +113,17 @@ export default function DeerHarvestLogScreen() {
                             }}
                         />
                     )}
-                    <Text style={styles.label}>County or WMA:</Text>
+                    <Text style={styles.label}>County or WMA: </Text>
                     <TextInput value={countyOrWMA} onChangeText={setCountyOrWMA} style={styles.input} />
 
-                    <Text style={styles.label}>Tag Number (optional):</Text>
+                    <Text style={styles.label}>Tag Number (optional): </Text>
                     <TextInput value={tagNumber} onChangeText={setTagNumber} style={styles.input} />
 
-                    <Text style={styles.label}>Confirmation # (if already reported):</Text>
+                    <Text style={styles.label}>Confirmation # (if already reported): </Text>
                     <TextInput value={confirmationNumber} onChangeText={setConfirmationNumber} style={styles.input} />
 
                     <TouchableOpacity style={styles.submit} onPress={handleSubmit}>
-                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Save Deer Report</Text>
+                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Save Deer Report </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.backButton}
