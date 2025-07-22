@@ -107,40 +107,40 @@ export default function MapScreen() {
 
   
 
-  useEffect(() => {
-    const parsed = (FloridaBoundariesSimplified as GeoJson).features.flatMap((feature, index) => {
-      if (!feature.geometry) return [];
+  // useEffect(() => {
+  //   const parsed = (FloridaBoundariesSimplified as GeoJson).features.flatMap((feature, index) => {
+  //     if (!feature.geometry) return [];
 
-      const { type, coordinates } = feature.geometry;
+  //     const { type, coordinates } = feature.geometry;
 
-      if (type === 'Polygon') {
-        return [{
-          id: `polygon-${index}`,
-          coords: coordinates[0].map(([lng, lat]: [number, number]) => ({
-            latitude: lat,
-            longitude: lng,
-          })),
-        }];
-      }
+  //     if (type === 'Polygon') {
+  //       return [{
+  //         id: `polygon-${index}`,
+  //         coords: coordinates[0].map(([lng, lat]: [number, number]) => ({
+  //           latitude: lat,
+  //           longitude: lng,
+  //         })),
+  //       }];
+  //     }
 
-      if (type === 'MultiPolygon') {
-        return coordinates.flatMap((poly: [number, number][][], polyIndex: number) => ({
-          id: `multipolygon-${index}-${polyIndex}`,
-          coords: poly[0]
-            .filter(([lng, lat]) => lng && lat)
-            .slice(0, 100)
-            .map(([lng, lat]) => ({
-              latitude: lat,
-              longitude: lng,
-            }))
-        }));
-      }
+  //     if (type === 'MultiPolygon') {
+  //       return coordinates.flatMap((poly: [number, number][][], polyIndex: number) => ({
+  //         id: `multipolygon-${index}-${polyIndex}`,
+  //         coords: poly[0]
+  //           .filter(([lng, lat]) => lng && lat)
+  //           .slice(0, 100)
+  //           .map(([lng, lat]) => ({
+  //             latitude: lat,
+  //             longitude: lng,
+  //           }))
+  //       }));
+  //     }
 
-      return [];
-    });
+  //     return [];
+  //   });
 
-    setParsedPolygons(parsed);
-  }, []);
+  //   setParsedPolygons(parsed);
+  // }, []);
 
   const saveMapSnapshot = async () => {
     if (!mapRef.current) return;
@@ -476,7 +476,7 @@ export default function MapScreen() {
           ))}
         {marker && <Marker coordinate={marker} />}
 
-        {showBoundaries && visiblePolygons.length > 0 &&
+        {/* {showBoundaries && visiblePolygons.length > 0 &&
           visiblePolygons
             .filter(p => p.coords.length > 2)
             .map(({ id, coords }) => (
@@ -487,8 +487,8 @@ export default function MapScreen() {
                 fillColor="rgba(255,165,0,0.2)"
                 strokeWidth={1}
               />
-            ))
-        }
+            )) */}
+
 
       </MapView>
 
