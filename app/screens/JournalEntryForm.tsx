@@ -5,10 +5,11 @@ import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { collection, addDoc, doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, auth } from '../services/firebaseConfig';
+import { db, auth } from '../services/firebaseconfig';
 import TagInput from '../components/TagInput';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Feather } from '@expo/vector-icons';
 
 type EntryRouteProp = RouteProp<RootStackParamList, 'JournalEntryForm'>;
 
@@ -140,10 +141,16 @@ useEffect(() => {
       style={styles.background}
     >
       <View style={styles.overlay} />
+      <TouchableOpacity
+  style={styles.backButton}
+  onPress={() => navigation.goBack()}
+>
+  <Feather name="arrow-left" size={24} color="#fff" />
+</TouchableOpacity>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Hunt Journal</Text>
+        <Text style={styles.title}>Hunt Journal </Text>
 
-        <Text style={styles.authorLabel}>Logged in as {userEmail}</Text>
+        <Text style={styles.authorLabel}>Logged in as {userEmail} </Text>
 
         <TextInput
           style={styles.input}
@@ -243,4 +250,14 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginLeft: '5%',
   },
+  backButton: {
+  position: 'absolute',
+  top: 30,
+  left: 10,
+  paddingVertical: 6,
+  paddingHorizontal: 14,
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  borderRadius: 10,
+  zIndex: 10,
+},
 });

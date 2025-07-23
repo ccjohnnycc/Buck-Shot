@@ -13,10 +13,13 @@ import HuntDetailScreen from '../screens/HuntDetailScreen';
 import JournalListScreen from '../screens/JournalListScreen';
 import JournalEntryForm from '../screens/JournalEntryForm';
 import MainTabs from './MainTabs';
+import PhotoViewerScreen from '../screens/PhotoViewerScreen';
+import OfflineMapsScreen from '../screens/OfflineMapsScreen';
+import DeerHarvestLogScreen from '../screens/HarvestLogScreen';
 
 export type RootStackParamList = {
   Main: undefined;
-  //Home: undefined;
+  DeerHarvestLog: undefined;
   Profile: undefined;
   Measure: undefined;
   Login: undefined;
@@ -33,6 +36,8 @@ export type RootStackParamList = {
     coords?: { latitude: number; longitude: number };
     userName?: string;
   };
+  PhotoViewer: { folderName: string; startIndex: number };
+  OfflineMaps: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -56,10 +61,13 @@ export default function AppNavigator() {
         <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
         <Stack.Screen name="Calibration" component={CalibrationScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Gallery" component={GalleryScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="HuntDetail" component={HuntDetailScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="JournalList" component={JournalListScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="JournalEntryForm" component={JournalEntryForm} options={{ headerShown: false }} />
+        <Stack.Screen name="Gallery" component={GalleryScreen} options={{headerShown: false}} />
+        <Stack.Screen name="HuntDetail" component={HuntDetailScreen} />
+        <Stack.Screen name="JournalList" component={JournalListScreen} options={{headerShown: false}} />
+        <Stack.Screen name="JournalEntryForm" component={JournalEntryForm} options={{headerShown: false}} />
+        <Stack.Screen name="PhotoViewer" component={PhotoViewerScreen} />
+        <Stack.Screen name="OfflineMaps" component={OfflineMapsScreen} options={{ headerShown: false }}/>
+        <Stack.Screen name="DeerHarvestLog" component={DeerHarvestLogScreen} options={{ headerShown: false }} />
         {/*<Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Measure" component={MeasureScreen} options={{ headerShown: false }} />*/}
       </Stack.Navigator>

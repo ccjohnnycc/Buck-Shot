@@ -6,7 +6,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
-import { auth } from '../services/firebaseConfig';
+import { auth } from '../services/firebaseconfig';
 import { onAuthStateChanged } from 'firebase/auth';
 
 type AuthNavProp = NativeStackNavigationProp<RootStackParamList, 'AuthLanding'>;
@@ -45,11 +45,7 @@ useEffect(() => {
         <Image source={icon} style={styles.iconImage} resizeMode="contain" />
 
         <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.buttonText}>Log in</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Signup')}>
-          <Text style={styles.buttonText}>Sign up</Text>
+          <Text style={styles.buttonText}>Sign in </Text>
         </TouchableOpacity>
 
         <Text style={styles.orText}>OR </Text>

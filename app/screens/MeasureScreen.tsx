@@ -24,16 +24,16 @@ import { useIsFocused, useFocusEffect } from '@react-navigation/native';
 import InstructionBanner from '../components/InstructionBanner';
 import DraggableCrosshair from '../components/DraggableCrosshair';
 import * as Location from 'expo-location';
-import { auth } from '../services/firebaseConfig';
+import { auth } from '../services/firebaseconfig';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MARKER_SIZE = 40;
 
 // You’ll need to tweak these two constants to exactly match your UI’s sizes:
 //InstructionBanner
-const TOP_UI_HEIGHT = 56; 
+const TOP_UI_HEIGHT = 56;
 //the slider + buttons at bottom
-const BOTTOM_UI_HEIGHT = 250;  
+const BOTTOM_UI_HEIGHT = 250;
 
 export default function MeasureScreen({ navigation }: any) {
   const [hasSaved, setHasSaved] = useState(false);
@@ -55,30 +55,8 @@ export default function MeasureScreen({ navigation }: any) {
   const [saveUX, setSaveUX] = useState(false);
   const [saveJournal, setSaveJournal] = useState(false);
   const containerRef = useRef<View>(null);
+  const [allowPlacingMarkers, setAllowPlacingMarkers] = useState(false);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      const onBackPress = () => {
-        Alert.alert(
-          'Confirm Exit',
-          'Are you sure you want to exit the app?',
-          [
-            { text: 'Cancel', style: 'cancel', onPress: () => {} },
-            { text: 'Yes', onPress: () => BackHandler.exitApp() },
-          ],
-          { cancelable: true }
-        );
-        // Return true to stop default back behavior (app exit)
-        return true;
-      };
-
-      const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-      return () => {
-        backHandler.remove();
-      };
-     }, [])
-  );
 
   // When screen regains focus, clear everything if there was a previous photo/markers
   useEffect(() => {
@@ -137,6 +115,7 @@ export default function MeasureScreen({ navigation }: any) {
     setSaveRaw(true);
     setSaveUX(false);
     setSaveJournal(false);
+    setAllowPlacingMarkers(false);
   };
 
   // Called when user taps “Recalibrate”
@@ -300,8 +279,7 @@ export default function MeasureScreen({ navigation }: any) {
 
         {/* 2) Crosshairs (only once cameraSize is known) */}
         {cameraSize.width > 0 &&
-          cameraSize.height > 0 &&
-          (
+          cameraSize.height > 0 && (
             <>
               {marker1 && (
                 <DraggableCrosshair
@@ -312,10 +290,19 @@ export default function MeasureScreen({ navigation }: any) {
                   key={`marker1-${marker1.x}-${marker1.y}`}
                   initialX={marker1.x}
                   initialY={marker1.y}
-                  onDragEnd={setMarker1}
+                  onDragEnd={(pos) => {
+                    setMarker1(pos);
+                    if (!marker2) {
+                      setMarker2({
+                        x: cameraSize.width / 2 + 60,
+                        y: cameraSize.height / 2,
+                      });
+                    }
+                  }}
                   capturedUri={capturedUri}
                 />
               )}
+
               {marker2 && (
                 <DraggableCrosshair
                   parentWidth={cameraSize.width}
@@ -330,30 +317,6 @@ export default function MeasureScreen({ navigation }: any) {
                 />
               )}
 
-              {!marker1 && (
-                <DraggableCrosshair
-                  parentWidth={cameraSize.width}
-                  parentHeight={cameraSize.height}
-                  clampTop={TOP_UI_HEIGHT}
-                  clampBottom={cameraSize.height - BOTTOM_UI_HEIGHT}
-                  initialX={cameraSize.width / 2 - 60}
-                  initialY={cameraSize.height / 2}
-                  onDragEnd={setMarker1}
-                  capturedUri={capturedUri}
-                />
-              )}
-              {!marker2 && marker1 && (
-                <DraggableCrosshair
-                  parentWidth={cameraSize.width}
-                  parentHeight={cameraSize.height}
-                  clampTop={TOP_UI_HEIGHT}
-                  clampBottom={cameraSize.height - BOTTOM_UI_HEIGHT}
-                  initialX={cameraSize.width / 2 + 60}
-                  initialY={cameraSize.height / 2}
-                  onDragEnd={setMarker2}
-                  capturedUri={capturedUri}
-                />
-              )}
             </>
           )}
 
@@ -421,6 +384,7 @@ export default function MeasureScreen({ navigation }: any) {
 
                   const photo = await cameraRef.current.takePictureAsync();
                   setCapturedUri(photo.uri);
+                  setAllowPlacingMarkers(true);
                 }
               }}
             />
@@ -443,6 +407,20 @@ export default function MeasureScreen({ navigation }: any) {
         {capturedUri && (
           <View style={styles.buttonSpacing}>
             <Button title="Save to Hunt Folder" onPress={() => setModalVisible(true)} />
+          </View>
+        )}
+
+        {capturedUri && !marker1 && !marker2 && allowPlacingMarkers && (
+          <View style={styles.buttonSpacing}>
+            <Button
+              title="Add Markers"
+              onPress={() => {
+                setMarker1({
+                  x: cameraSize.width / 2 - 60,
+                  y: cameraSize.height / 2,
+                });
+              }}
+            />
           </View>
         )}
 
@@ -493,7 +471,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   camera: {
-    flex: 1, 
+    flex: 1,
     width: '100%',
   },
   center: {
