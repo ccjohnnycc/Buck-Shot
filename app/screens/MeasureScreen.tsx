@@ -25,6 +25,8 @@ import InstructionBanner from '../components/InstructionBanner';
 import DraggableCrosshair from '../components/DraggableCrosshair';
 import * as Location from 'expo-location';
 import { auth } from '../services/firebaseconfig';
+import { uploadTestHunt } from '../services/firebaseUtils';
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MARKER_SIZE = 40;
@@ -233,6 +235,7 @@ export default function MeasureScreen({ navigation }: any) {
       }
 
       Alert.alert('Saved', 'Your photo has been saved to the hunt.');
+      await uploadTestHunt();
       setModalVisible(false);
       clearAll();
     } catch (err) {
