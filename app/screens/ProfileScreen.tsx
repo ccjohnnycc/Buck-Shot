@@ -173,43 +173,35 @@ const ProfileScreen = () => {
               style={styles.menuButton}
               onPress={() => navigation.navigate({ name: 'JournalList', params: {} })}
             >
-              <Text style={styles.buttonText}>View Journal</Text>
+              <Text style={styles.buttonText}>View Journal </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.menuButton}
               onPress={() => navigation.navigate({ name: 'Gallery', params: {} })}
             >
-              <Text style={styles.buttonText}>View Hunt Gallery</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuButton}
-              onPress={handleUpload}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>Sync to Cloud</Text>
+              <Text style={styles.buttonText}>View Hunt Gallery </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.menuButton, { backgroundColor: '#2f95dc' }]}
               onPress={sendTestNotification}
             >
-              <Text style={styles.buttonText}>Send Test Notification</Text>
+              <Text style={styles.buttonText}>Send Test Notification </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.menuButton, { backgroundColor: '#ff4444' }]}
               onPress={handleLogout}
             >
-              <Text style={styles.buttonText}>Logout</Text>
+              <Text style={styles.buttonText}>Logout </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.menuButton}
               onPress={() => navigation.navigate('DeerHarvestLog')}
             >
-              <Text style={styles.buttonText}>Log a Deer Harvest</Text>
+              <Text style={styles.buttonText}>Log a Deer Harvest </Text>
             </TouchableOpacity>
           </View>
 
@@ -251,7 +243,7 @@ const styles = StyleSheet.create({
   statsBox: {
     backgroundColor: '#222',
     borderRadius: 12,
-    padding: 5,
+    padding: 15,
     width: '90%',
     alignItems: 'flex-start',
     shadowColor: '#000',
