@@ -42,10 +42,8 @@ export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [pins, setPins] = useState<HuntPin[]>([]);
-  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [activePin, setActivePin] = useState<HuntPin | null>(null);
   const [filterTag, setFilterTag] = useState<string | null>(null);
-  const [customTitle, setCustomTitle] = useState('');
   const [showBoundaries, setShowBoundaries] = useState(true);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -55,6 +53,13 @@ export default function MapScreen() {
   const [visiblePolygons, setVisiblePolygons] = useState<ParsedPolygon[]>([]);
   const MAX_POLYGONS = 30;
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const [pendingCoords, setPendingCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [pendingTitle, setPendingTitle] = useState('');
+  const [showTitleModal, setShowTitleModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [snapshotSaved, setSnapshotSaved] = useState(false);
+  const [savingDisabled, setSavingDisabled] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
 
 
   const demoPolygons = [
@@ -105,7 +110,15 @@ export default function MapScreen() {
     }[];
   };
 
-  
+  useEffect(() => {
+    const checkTooltip = async () => {
+      const seen = await AsyncStorage.getItem('seenPinTip');
+      if (!filterTag) return;
+    };
+    checkTooltip();
+  }, []);
+
+
 
   // useEffect(() => {
   //   const parsed = (FloridaBoundariesSimplified as GeoJson).features.flatMap((feature, index) => {
@@ -143,7 +156,9 @@ export default function MapScreen() {
   // }, []);
 
   const saveMapSnapshot = async () => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || savingDisabled) return;
+
+    setSavingDisabled(true);
 
     try {
       const uri = await captureRef(mapRef.current, {
@@ -165,11 +180,13 @@ export default function MapScreen() {
         to: destinationUri,
       });
 
-      Alert.alert('Saved', 'Map snapshot saved for offline viewing!');
+      setSnapshotSaved(true); // show feedback modal
     } catch (err) {
       console.error('Snapshot failed:', err);
       Alert.alert('Error', 'Failed to save map snapshot.');
     }
+
+    setTimeout(() => setSavingDisabled(false), 2000); // re-enable button after 2 seconds
   };
 
   const handleRegionChangeComplete = (newRegion: Region) => {
@@ -458,8 +475,14 @@ export default function MapScreen() {
         showsUserLocation
         showsMyLocationButton={false}
         onLongPress={(e) => {
-          const coords = e.nativeEvent.coordinate;
-          setSelectedCoords({ lat: coords.latitude, lon: coords.longitude });
+          if (!filterTag) {
+            Alert.alert("No pin type selected", "Please select a pin type from the sidebar before placing a pin.");
+            return;
+          }
+
+          setPendingCoords(e.nativeEvent.coordinate);
+          setPendingTitle('');
+          setShowTitleModal(true);
         }}
         onRegionChangeComplete={handleRegionChangeComplete}
       >
@@ -492,10 +515,64 @@ export default function MapScreen() {
 
       </MapView>
 
+      <View style={styles.fabContainer}>
+        {fabOpen && (
+          <>
+            <TouchableOpacity style={styles.fabAction} onPress={() => navigation.navigate('OfflineMaps')}>
+              <Text style={styles.fabText}>📁 Saved Maps</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.fabAction, savingDisabled && { opacity: 0.5 }]}
+              onPress={saveMapSnapshot}
+              disabled={savingDisabled}
+            >
+              <Text style={styles.fabText}>💾 Save Map</Text>
+            </TouchableOpacity>
+
+             <TouchableOpacity style={styles.fabAction} onPress={goToUserLocation}>
+              <Text style={styles.fabText}>📍 Find Me</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+      <TouchableOpacity
+  style={styles.fabMainButton}
+  onPress={() => setFabOpen(prev => !prev)}
+>
+  <Text style={styles.fabMainText}>
+    {fabOpen ? 'Close Tools' : '⚙️ Map Tools'}
+  </Text>
+</TouchableOpacity>
+      </View>
+
       {activePin && (
         <View style={styles.deletePinOverlay}>
-          <Text style={styles.deleteText}>Title: {activePin.title}</Text>
           <Text style={styles.deleteText}>Type: {activePin.tag}</Text>
+          <TextInput
+            value={activePin.title}
+            style={{
+              color: '#fff',
+              borderColor: '#ccc',
+              borderWidth: 1,
+              borderRadius: 6,
+              padding: 6,
+              marginBottom: 10,
+            }}
+            onChangeText={(newTitle) => {
+              setActivePin({ ...activePin, title: newTitle });
+            }}
+          />
+          <Button
+            title="Save Title"
+            onPress={async () => {
+              const updatedPins = pins.map(p =>
+                p.id === activePin.id ? { ...p, title: activePin.title } : p
+              );
+              setPins(updatedPins);
+              await AsyncStorage.setItem('huntPins', JSON.stringify(updatedPins));
+              setActivePin(null);
+            }}
+          />
           <Button
             title="Delete Pin"
             color="#ff4444"
@@ -510,22 +587,37 @@ export default function MapScreen() {
         </View>
       )}
 
-      <View style={styles.buttonStack}>
-        <TouchableOpacity style={[styles.mapButton, styles.findBtn]} onPress={goToUserLocation}>
-          <Text style={styles.mapButtonText}>Find Me</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.mapButton, styles.viewBtn]} onPress={() => navigation.navigate('OfflineMaps')}>
-          <Text style={styles.mapButtonText}>View Saved Maps</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.mapButton, styles.saveBtn]} onPress={saveMapSnapshot}>
-          <Text style={styles.mapButtonTextDark}>Save Map</Text>
-        </TouchableOpacity>
-      </View>
-      {selectedCoords && (
+      {showHelpModal && (
         <View style={styles.modal}>
-          <Text style={styles.modalTitle}>Tag this location</Text>
+          <Text style={styles.modalTitle}>Map Tips</Text>
+          <Text style={{ color: '#fff', marginBottom: 5, }}>
+            • Tap and hold the map to place a pin.{'\n'}
+            • Select a pin type from the right first (Tree Stand, Cam, etc).{'\n'}
+            • You can edit pin titles or delete them by tapping a pin.{'\n'}
+            • Use the Find Me" button to center the map on a location.{'\n'}
+            • Tap “Save Map” to store the current view for offline use.
+          </Text>
+          <Button title="Got it" onPress={() => setShowHelpModal(false)} />
+        </View>
+      )}
+
+      {snapshotSaved && (
+        <View style={styles.modal}>
+          <Text style={styles.modalTitle}>Map Saved</Text>
+          <Text style={{ color: '#fff', marginBottom: 12 }}>
+            Map snapshot saved for offline viewing.
+          </Text>
+          <Button title="View Offline Maps" onPress={() => {
+            setSnapshotSaved(false);
+            navigation.navigate('OfflineMaps');
+          }} />
+          <Button title="Close" onPress={() => setSnapshotSaved(false)} />
+        </View>
+      )}
+
+      {showTitleModal && pendingCoords && (
+        <View style={styles.modal}>
+          <Text style={styles.modalTitle}>Add Pin Title</Text>
           <TextInput
             style={{
               backgroundColor: '#222',
@@ -534,36 +626,58 @@ export default function MapScreen() {
               borderRadius: 6,
               marginBottom: 12,
             }}
-            placeholder="Optional pin title (e.g. North Feeder)"
+            placeholder={`Optional title for ${filterTag}`}
             placeholderTextColor="#aaa"
-            value={customTitle}
-            onChangeText={setCustomTitle}
+            value={pendingTitle}
+            onChangeText={setPendingTitle}
           />
-          {['Tree Stand', 'Pin', 'Cam', 'Feeder'].map((type) => (
-            <TouchableOpacity
-              key={type}
-              style={styles.modalButton}
-              onPress={async () => {
-                const newPin: HuntPin = {
-                  id: Date.now().toString(),
-                  title: customTitle.trim() || type,
-                  tag: type as HuntPin['tag'],
-                  latitude: selectedCoords.lat,
-                  longitude: selectedCoords.lon,
-                };
-                const updatedPins = [...pins, newPin];
-                setPins(updatedPins);
-                await AsyncStorage.setItem('huntPins', JSON.stringify(updatedPins));
-                setSelectedCoords(null);
-                setCustomTitle('');
-              }}
-            >
-              <Text style={styles.modalButtonText}>{type}</Text>
-            </TouchableOpacity>
-          ))}
-          <Button title="Cancel" onPress={() => setSelectedCoords(null)} />
+          <TouchableOpacity
+            style={styles.modalButton}
+            onPress={async () => {
+              const count = pins.filter(p => p.tag === filterTag).length + 1;
+              const newPin: HuntPin = {
+                id: Date.now().toString(),
+                title: pendingTitle.trim() || `${filterTag} ${count}`,
+                tag: filterTag as HuntPin['tag'],
+                latitude: pendingCoords.latitude,
+                longitude: pendingCoords.longitude,
+              };
+              const updatedPins = [...pins, newPin];
+              setPins(updatedPins);
+              await AsyncStorage.setItem('huntPins', JSON.stringify(updatedPins));
+
+              setShowTitleModal(false);
+              setPendingCoords(null);
+              setPendingTitle('');
+              // Optionally reset filterTag here
+            }}
+          >
+            <Text style={styles.modalButtonText}>Save</Text>
+          </TouchableOpacity>
+
+          <Button title="Cancel" onPress={() => {
+            setShowTitleModal(false);
+            setPendingCoords(null);
+            setPendingTitle('');
+          }} />
         </View>
       )}
+
+      <TouchableOpacity
+        onPress={() => setShowHelpModal(true)}
+        style={{
+          position: 'absolute',
+          bottom: 25,
+          left: 15,
+          backgroundColor: '#333',
+          borderRadius: 20,
+          paddingVertical: 8,
+          paddingHorizontal: 12,
+          zIndex: 10,
+        }}
+      >
+        <Text style={{ color: '#FFD700', fontSize: 20, fontWeight: 'bold' }}>?</Text>
+      </TouchableOpacity>
     </ImageBackground>
   );
 }
@@ -660,11 +774,12 @@ const styles = StyleSheet.create({
   },
   sidebar: {
     position: 'absolute',
-    right: 10,
-    top: 150,
+    right: 5,
+    top: 120,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 12,
-    paddingVertical: 10,
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
     zIndex: 10,
   },
   sidebarButton: {
@@ -676,8 +791,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   sidebarIcon: {
-    width: 35,
-    height: 35,
+    width: 50,
+    height: 40,
     resizeMode: 'contain',
   },
   buttonStack: {
@@ -728,4 +843,58 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
   },
+
+  fabContainer: {
+    position: 'absolute',
+    bottom: 15,
+    right: 15,
+    flexDirection: 'column-reverse',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+
+  fabMain: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFD700',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+
+  fabAction: {
+    backgroundColor: '#2f95dc',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    marginBottom: 10,
+  },
+
+  fabText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+
+  fabMainButton: {
+  backgroundColor: '#FFD700',
+  paddingVertical: 10,
+  paddingHorizontal: 15,
+  borderRadius: 10,
+  marginTop: 5,
+  marginBottom: 7, 
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: 120,
+},
+
+fabMainText: {
+  color: '#000',
+  fontWeight: 'bold',
+  fontSize: 14,
+},
 });
