@@ -14,6 +14,8 @@ import { signOut } from 'firebase/auth';
 import { registerForPushNotificationsAsync, scheduleSeasonNotifications } from './notifications';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 const ProfileScreen = () => {
   const [status, setStatus] = useState<string>('');
@@ -139,79 +141,82 @@ const ProfileScreen = () => {
     });
   }, []);
 
-
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
       <View style={styles.overlay} />
-      <View style={styles.container}>
-        <TouchableOpacity onPress={pickImage}>
-          <Image
-            source={
-              profileImage
-                ? { uri: profileImage }
-                : require('../../assets/placeholder_user.png') // Add a default icon here
-            }
-            style={styles.profilePic}
-          />
-        </TouchableOpacity>
-        <Feather name="user" size={80} color="#FFD700" />
-        <Text style={styles.title}>My Profile </Text>
+      <SafeAreaView style={styles.safeContainer} edges={['bottom', 'left', 'right']}>
 
-        <View style={styles.statsBox}>
-          <Text style={styles.stat}>Email: {name || email || 'Guest'}</Text>
-          <Text style={styles.stat}>Total Hunts: {huntCount}</Text>
-          <Text style={styles.stat}>Journal Entries: {journalCount}</Text>
-        </View>
-
-        <View style={styles.buttonGroup}>
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => navigation.navigate({ name: 'JournalList', params: {} })}
-          >
-            <Text style={styles.buttonText}>View Journal </Text>
+        <View style={styles.container}>
+          <TouchableOpacity onPress={pickImage}>
+            <Image
+              source={
+                profileImage
+                  ? { uri: profileImage }
+                  : require('../../assets/placeholder_user.png')
+              }
+              style={styles.profilePic}
+            />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => navigation.navigate({ name: 'Gallery', params: {} })}
-          >
-            <Text style={styles.buttonText}>View Hunt Gallery </Text>
-          </TouchableOpacity>
+          <Feather name="user" size={80} color="#FFD700" />
+          <Text style={styles.title}>My Profile</Text>
+
+          <View style={styles.statsBox}>
+            <Text style={styles.stat}>Email: {name || email || 'Guest'}</Text>
+            <Text style={styles.stat}>Total Hunts: {huntCount}</Text>
+            <Text style={styles.stat}>Journal Entries: {journalCount}</Text>
+          </View>
+
+          {/* ✅ Unified button section */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={() => navigation.navigate({ name: 'JournalList', params: {} })}
+            >
+              <Text style={styles.buttonText}>View Journal</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={() => navigation.navigate({ name: 'Gallery', params: {} })}
+            >
+              <Text style={styles.buttonText}>View Hunt Gallery</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={handleUpload}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>Sync to Cloud</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.menuButton, { backgroundColor: '#2f95dc' }]}
+              onPress={sendTestNotification}
+            >
+              <Text style={styles.buttonText}>Send Test Notification</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.menuButton, { backgroundColor: '#ff4444' }]}
+              onPress={handleLogout}
+            >
+              <Text style={styles.buttonText}>Logout</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={() => navigation.navigate('DeerHarvestLog')}
+            >
+              <Text style={styles.buttonText}>Log a Deer Harvest</Text>
+            </TouchableOpacity>
+          </View>
+
+          {status ? <Text style={styles.status}>{status}</Text> : null}
+          {loading && <ActivityIndicator size="large" color="#FFD700" />}
         </View>
-
-        <View style={styles.bottomButtons}>
-          <Button
-            title="Sync to Cloud"
-            onPress={handleUpload}
-            color="#FFA500"
-            disabled={loading}
-          />
-
-          <TouchableOpacity
-            style={[styles.menuButton, { backgroundColor: '#2f95dc' }]}
-            onPress={sendTestNotification}
-          >
-            <Text style={styles.buttonText}>Send Test Notification</Text>
-          </TouchableOpacity>
-          <View style={{ marginVertical: 8 }} />
-          <View style={{ marginVertical: 8 }} />
-          <Button
-            title="Logout"
-            onPress={handleLogout}
-            color="#ff4444"
-          />
-        </View>
-
-        {status ? <Text style={styles.status}>{status}</Text> : null}
-        {loading && <ActivityIndicator size="large" color="#FFD700" />}
-      </View>
-
-      <TouchableOpacity
-        style={styles.menuButton}
-        onPress={() => navigation.navigate('DeerHarvestLog')}
-      >
-        <Text style={styles.buttonText}>Log a Deer Harvest</Text>
-      </TouchableOpacity>
+      </SafeAreaView>
     </ImageBackground>
   );
 }
@@ -220,6 +225,9 @@ export default ProfileScreen;
 
 const styles = StyleSheet.create({
   background: {
+    flex: 1,
+  },
+  safeContainer: {
     flex: 1,
   },
   overlay: {
@@ -231,6 +239,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 80,
     paddingHorizontal: 20,
+    paddingBottom: 100,
   },
   title: {
     fontSize: 24,
@@ -242,8 +251,7 @@ const styles = StyleSheet.create({
   statsBox: {
     backgroundColor: '#222',
     borderRadius: 12,
-    padding: 15,
-    marginBottom: 30,
+    padding: 5,
     width: '90%',
     alignItems: 'flex-start',
     shadowColor: '#000',
@@ -262,9 +270,11 @@ const styles = StyleSheet.create({
   },
   menuButton: {
     backgroundColor: '#FFD700',
-    padding: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 10,
-    marginBottom: 12,
+    marginVertical: 6,
+    width: '100%',
     alignItems: 'center',
   },
   buttonText: {
@@ -288,5 +298,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFD700',
     marginBottom: 10,
+  },
+  buttonContainer: {
+    width: '90%',
+    marginTop: 5,
+    alignItems: 'center',
   },
 });
