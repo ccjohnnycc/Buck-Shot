@@ -1,6 +1,6 @@
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { collection, addDoc } from 'firebase/firestore';
-import { db, storage, auth } from './firebaseconfig';
+import { db, storage, auth } from './FirebaseConfig';
 import * as FileSystem from 'expo-file-system';
 
 export const uploadTestHunt = async () => {

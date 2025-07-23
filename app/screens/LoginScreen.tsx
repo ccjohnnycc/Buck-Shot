@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../services/firebaseconfig';
+import { auth } from '../services/FirebaseConfig';
 import { AuthBackground } from './AuthBackground';
 import { Feather } from '@expo/vector-icons';
 

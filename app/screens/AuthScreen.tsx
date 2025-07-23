@@ -6,7 +6,7 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
-import { auth } from '../services/firebaseconfig';
+import { auth } from '../services/FirebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
 
 type AuthNavProp = NativeStackNavigationProp<RootStackParamList, 'AuthLanding'>;

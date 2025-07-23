@@ -8,30 +8,32 @@ import {
   Alert,
   Button,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { uploadTestHunt } from '../services/firebaseUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../services/firebaseconfig';
+import { db, auth } from '../services/FirebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { auth } from '../services/firebaseconfig';
 import { signOut } from 'firebase/auth';
 import { registerForPushNotificationsAsync, scheduleSeasonNotifications } from './notifications';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
 
 export default function ProfileScreen() {
-  const navigation = useNavigation<ProfileNavProp>();
   const [email, setEmail] = useState<string>('');
   const [huntCount, setHuntCount] = useState<number>(0);
   const [journalCount, setJournalCount] = useState<number>(0);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [name, setName] = useState<string>('');
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>('');
+  const [uploading, setUploading] = useState<boolean>(false);
+  const [loadingStats, setLoadingStats] = useState<boolean>(false);
 
   useEffect(() => {
     AsyncStorage.getItem('userEmail').then(storedEmail => {
@@ -65,7 +67,7 @@ export default function ProfileScreen() {
     } finally {
       setLoadingStats(false);
     }
-  }, []);
+  };
 
   const sendTestNotification = async () => {
     try {
@@ -137,7 +139,7 @@ export default function ProfileScreen() {
       const result = await uploadTestHunt();
       if (result.success) {
         setStatus('Upload complete');
-        await fetchStats();
+        await fetchStats(email);
       } else {
         setStatus('Upload failed');
       }
@@ -168,13 +170,13 @@ export default function ProfileScreen() {
             source={
               profileImage
                 ? { uri: profileImage }
-                : require('../../assets/placeholder_user.png') // Add a default icon here
+                : require('../../assets/placeholder_user.png')
             }
             style={styles.profilePic}
           />
         </TouchableOpacity>
         <Feather name="user" size={80} color="#FFD700" />
-        <Text style={styles.title}>My Profile</Text>
+        <Text style={styles.title}>My Profile </Text>
 
         {loadingStats ? (
           <ActivityIndicator size="large" color="#FFD700" />
@@ -197,7 +199,7 @@ export default function ProfileScreen() {
             style={styles.menuButton}
             onPress={() => navigation.navigate('Gallery', { filterTags: undefined })}
           >
-            <Text style={styles.buttonText}>View Hunt Gallery</Text>
+            <Text style={styles.buttonText}>View Hunt Gallery </Text>
           </TouchableOpacity>
         </View>
 
@@ -213,7 +215,7 @@ export default function ProfileScreen() {
             style={[styles.menuButton, { backgroundColor: '#2f95dc' }]}
             onPress={sendTestNotification}
           >
-            <Text style={styles.buttonText}>Send Test Notification</Text>
+            <Text style={styles.buttonText}>Send Test Notification </Text>
           </TouchableOpacity>
           <View style={{ marginVertical: 8 }} />
           <View style={{ marginVertical: 8 }} />
@@ -231,77 +233,86 @@ export default function ProfileScreen() {
         style={styles.menuButton}
         onPress={() => navigation.navigate('DeerHarvestLog')}
       >
-        <Text style={styles.buttonText}>Log a Deer Harvest</Text>
+        <Text style={styles.buttonText}>Log a Deer Harvest </Text>
       </TouchableOpacity>
     </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  background: { flex: 1 },
+  background: {
+    flex: 1,
+    resizeMode: 'cover',
+  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   container: {
     flex: 1,
     alignItems: 'center',
-    paddingTop: 80,
-    paddingHorizontal: 20,
-  },
-  title: {
-    fontSize: 24,
-    color: '#FFD700',
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  statsBox: {
-    backgroundColor: '#222',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 30,
-    width: '90%',
-    alignItems: 'flex-start',
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-  },
-  stat: {
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 6,
-  },
-  buttonGroup: {
-    width: '90%',
-    marginBottom: 20,
-  },
-  menuButton: {
-    backgroundColor: '#FFD700',
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  bottomButtons: {
-    width: '80%',
-  },
-  status: {
-    marginTop: 20,
-    color: '#fff',
-    fontStyle: 'italic',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 60,
   },
   profilePic: {
     width: 100,
     height: 100,
     borderRadius: 50,
+    marginBottom: 16,
     borderWidth: 2,
     borderColor: '#FFD700',
-    marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 24,
+  },
+  statsBox: {
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    width: '100%',
+    alignItems: 'center',
+  },
+  stat: {
+    fontSize: 18,
+    color: '#333',
+    marginBottom: 8,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 24,
+  },
+  menuButton: {
+    backgroundColor: '#FFD700',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginHorizontal: 8,
+    marginVertical: 4,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#222',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  bottomButtons: {
+    width: '100%',
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  status: {
+    marginTop: 16,
+    color: '#FFA500',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
+

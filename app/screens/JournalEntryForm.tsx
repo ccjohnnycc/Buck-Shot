@@ -5,7 +5,7 @@ import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { collection, addDoc, doc, getDoc, setDoc } from 'firebase/firestore';
-import { db, auth } from '../services/firebaseconfig';
+import { db, auth } from '../services/FirebaseConfig';
 import TagInput from '../components/TagInput';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';

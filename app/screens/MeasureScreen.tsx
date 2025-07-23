@@ -24,7 +24,7 @@ import { useIsFocused, useFocusEffect } from '@react-navigation/native';
 import InstructionBanner from '../components/InstructionBanner';
 import DraggableCrosshair from '../components/DraggableCrosshair';
 import * as Location from 'expo-location';
-import { auth } from '../services/firebaseconfig';
+import { auth } from '../services/FirebaseConfig';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MARKER_SIZE = 40;

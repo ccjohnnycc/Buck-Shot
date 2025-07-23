@@ -12,7 +12,7 @@ import {
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../services/firebaseconfig';
+import { auth, db } from '../services/FirebaseConfig';
 import { doc, setDoc } from 'firebase/firestore';
 import { AuthBackground } from './AuthBackground';
 
