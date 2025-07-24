@@ -60,6 +60,7 @@ export default function MapScreen() {
   const [snapshotSaved, setSnapshotSaved] = useState(false);
   const [savingDisabled, setSavingDisabled] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
 
 
   const demoPolygons = [
@@ -120,40 +121,43 @@ export default function MapScreen() {
 
 
 
-  // useEffect(() => {
-  //   const parsed = (FloridaBoundariesSimplified as GeoJson).features.flatMap((feature, index) => {
-  //     if (!feature.geometry) return [];
+ useEffect(() => {
+  const parsed = (FloridaBoundariesSimplified as GeoJson).features.flatMap((feature, index) => {
+    if (!feature.geometry) return [];
 
-  //     const { type, coordinates } = feature.geometry;
+    const { type, coordinates } = feature.geometry;
 
-  //     if (type === 'Polygon') {
-  //       return [{
-  //         id: `polygon-${index}`,
-  //         coords: coordinates[0].map(([lng, lat]: [number, number]) => ({
-  //           latitude: lat,
-  //           longitude: lng,
-  //         })),
-  //       }];
-  //     }
+    if (type === 'Polygon') {
+      return [{
+        id: `polygon-${index}`,
+        coords: coordinates[0]
+          .slice(0, 200) // LIMIT complexity
+          .map(([lng, lat]: [number, number]) => ({
+            latitude: lat,
+            longitude: lng,
+          })),
+      }];
+    }
 
-  //     if (type === 'MultiPolygon') {
-  //       return coordinates.flatMap((poly: [number, number][][], polyIndex: number) => ({
-  //         id: `multipolygon-${index}-${polyIndex}`,
-  //         coords: poly[0]
-  //           .filter(([lng, lat]) => lng && lat)
-  //           .slice(0, 100)
-  //           .map(([lng, lat]) => ({
-  //             latitude: lat,
-  //             longitude: lng,
-  //           }))
-  //       }));
-  //     }
+    if (type === 'MultiPolygon') {
+      return coordinates.flatMap((poly: [number, number][][], polyIndex: number) => ({
+        id: `multipolygon-${index}-${polyIndex}`,
+        coords: poly[0]
+          .filter(([lng, lat]) => lng && lat)
+          .slice(0, 200)
+          .map(([lng, lat]) => ({
+            latitude: lat,
+            longitude: lng,
+          }))
+      }));
+    }
 
-  //     return [];
-  //   });
+    return [];
+  });
 
-  //   setParsedPolygons(parsed);
-  // }, []);
+  setParsedPolygons(parsed); 
+  console.log('Parsed polygons loaded:', parsed.length);
+}, []);
 
   const saveMapSnapshot = async () => {
     if (!mapRef.current || savingDisabled) return;
@@ -191,11 +195,9 @@ export default function MapScreen() {
 
   const handleRegionChangeComplete = (newRegion: Region) => {
     setRegion(newRegion);
-
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
-
     debounceTimer.current = setTimeout(() => {
       filterPolygonsByRegion(newRegion);
     }, 500);
@@ -261,7 +263,23 @@ export default function MapScreen() {
         await AsyncStorage.setItem('recentSearches', JSON.stringify(updated));
         setRecentSearches(updated);
       } else {
-        setError('No results found.');
+        setMarker(null);
+        Alert.alert(
+          'No Results',
+          'No results found for that search. Try a different location.',
+          [
+            {
+              text: 'Retry',
+              onPress: () => {
+                setSearch('');
+                setTimeout(() => {
+                  searchInputRef.current?.focus();
+                }, 200);
+              }
+            },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
       }
     } catch {
       setError('Search failed.');
@@ -357,6 +375,7 @@ export default function MapScreen() {
         <View style={{ paddingHorizontal: 18, marginTop: 12, zIndex: 20 }}>
           <View style={{ flexDirection: 'row' }}>
             <TextInput
+              ref={searchInputRef}
               style={styles.searchInput}
               value={search}
               onChangeText={(text) => {
@@ -499,7 +518,7 @@ export default function MapScreen() {
           ))}
         {marker && <Marker coordinate={marker} />}
 
-        {/* {showBoundaries && visiblePolygons.length > 0 &&
+        {showBoundaries && visiblePolygons.length > 0 &&
           visiblePolygons
             .filter(p => p.coords.length > 2)
             .map(({ id, coords }) => (
@@ -510,8 +529,8 @@ export default function MapScreen() {
                 fillColor="rgba(255,165,0,0.2)"
                 strokeWidth={1}
               />
-            )) */}
-
+            ))
+        }
 
       </MapView>
 
@@ -529,39 +548,27 @@ export default function MapScreen() {
               <Text style={styles.fabText}>💾 Save Map</Text>
             </TouchableOpacity>
 
-             <TouchableOpacity style={styles.fabAction} onPress={goToUserLocation}>
+            <TouchableOpacity style={styles.fabAction} onPress={goToUserLocation}>
               <Text style={styles.fabText}>📍 Find Me</Text>
             </TouchableOpacity>
           </>
         )}
 
-      <TouchableOpacity
-  style={styles.fabMainButton}
-  onPress={() => setFabOpen(prev => !prev)}
->
-  <Text style={styles.fabMainText}>
-    {fabOpen ? 'Close Tools' : '⚙️ Map Tools'}
-  </Text>
-</TouchableOpacity>
+        <TouchableOpacity
+          style={styles.fabMainButton}
+          onPress={() => setFabOpen(prev => !prev)}
+        >
+          <Text style={styles.fabMainText}>
+            {fabOpen ? 'Close Tools' : '⚙️ Map Tools'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {activePin && (
         <View style={styles.deletePinOverlay}>
+          <Text style={styles.deleteText}>Title: {activePin.title}</Text>
           <Text style={styles.deleteText}>Type: {activePin.tag}</Text>
-          <TextInput
-            value={activePin.title}
-            style={{
-              color: '#fff',
-              borderColor: '#ccc',
-              borderWidth: 1,
-              borderRadius: 6,
-              padding: 6,
-              marginBottom: 10,
-            }}
-            onChangeText={(newTitle) => {
-              setActivePin({ ...activePin, title: newTitle });
-            }}
-          />
+
           <Button
             title="Save Title"
             onPress={async () => {
@@ -573,16 +580,31 @@ export default function MapScreen() {
               setActivePin(null);
             }}
           />
+
           <Button
             title="Delete Pin"
             color="#ff4444"
-            onPress={async () => {
-              const updatedPins = pins.filter(p => p.id !== activePin.id);
-              setPins(updatedPins);
-              await AsyncStorage.setItem('huntPins', JSON.stringify(updatedPins));
-              setActivePin(null);
+            onPress={() => {
+              Alert.alert(
+                "Delete Pin",
+                "Are you sure you want to delete this item?",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                      const updatedPins = pins.filter(p => p.id !== activePin.id);
+                      setPins(updatedPins);
+                      await AsyncStorage.setItem('huntPins', JSON.stringify(updatedPins));
+                      setActivePin(null);
+                    },
+                  },
+                ]
+              );
             }}
           />
+
           <Button title="Cancel" onPress={() => setActivePin(null)} />
         </View>
       )}
@@ -881,20 +903,20 @@ const styles = StyleSheet.create({
   },
 
   fabMainButton: {
-  backgroundColor: '#FFD700',
-  paddingVertical: 10,
-  paddingHorizontal: 15,
-  borderRadius: 10,
-  marginTop: 5,
-  marginBottom: 7, 
-  alignItems: 'center',
-  justifyContent: 'center',
-  minWidth: 120,
-},
+    backgroundColor: '#FFD700',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+    marginTop: 5,
+    marginBottom: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 120,
+  },
 
-fabMainText: {
-  color: '#000',
-  fontWeight: 'bold',
-  fontSize: 14,
-},
+  fabMainText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
 });

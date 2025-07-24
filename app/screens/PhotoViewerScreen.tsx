@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Image, StyleSheet, Dimensions, TouchableOpacity, Text } from 'react-native';
+import { View, Image, StyleSheet, Dimensions, TouchableOpacity, Text, Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
@@ -42,6 +42,34 @@ export default function PhotoViewerScreen() {
       {/* Close button */}
       <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
         <Text style={styles.closeText}>✕</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.closeButton, { right: 80 }]}
+        onPress={() => {
+          Alert.alert(
+            "Delete Photo",
+            "Are you sure you want to delete this item?",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Delete",
+                style: "destructive",
+                onPress: async () => {
+                  try {
+                    await FileSystem.deleteAsync(photos[index]);
+                    const updatedPhotos = photos.filter((_, i) => i !== index);
+                    setPhotos(updatedPhotos);
+                    setIndex(Math.max(index - 1, 0));
+                  } catch (err) {
+                    Alert.alert("Error", "Failed to delete photo.");
+                  }
+                },
+              },
+            ]
+          );
+        }}
+      >
+        <Text style={styles.closeText}>🗑️</Text>
       </TouchableOpacity>
     </View>
   );

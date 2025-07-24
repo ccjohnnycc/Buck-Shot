@@ -16,6 +16,7 @@ import MainTabs from './MainTabs';
 import PhotoViewerScreen from '../screens/PhotoViewerScreen';
 import OfflineMapsScreen from '../screens/OfflineMapsScreen';
 import DeerHarvestLogScreen from '../screens/HarvestLogScreen';
+import HarvestReportsScreen from '../screens/HarvestReportsScreen';
 
 export type RootStackParamList = {
   Main: undefined;
@@ -38,6 +39,7 @@ export type RootStackParamList = {
   };
   PhotoViewer: { folderName: string; startIndex: number };
   OfflineMaps: undefined;
+  HarvestReports: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -53,7 +55,9 @@ const commonHeaderOptions: NativeStackNavigationOptions = {
 export default function AppNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="AuthLanding"
+      <Stack.Navigator
+        id={undefined}
+        initialRouteName="AuthLanding"
         screenOptions={commonHeaderOptions}>
         {/*<Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />*/}
         <Stack.Screen name="AuthLanding" component={AuthScreen} options={{ headerShown: false }} />
@@ -70,6 +74,7 @@ export default function AppNavigator() {
         <Stack.Screen name="DeerHarvestLog" component={DeerHarvestLogScreen} options={{ headerShown: false }} />
         {/*<Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Measure" component={MeasureScreen} options={{ headerShown: false }} />*/}
+        <Stack.Screen name="HarvestReports" component={HarvestReportsScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

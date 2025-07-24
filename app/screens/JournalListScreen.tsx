@@ -104,7 +104,20 @@ export default function JournalListScreen() {
                       <Button
                         title="Delete"
                         color="#ff4444"
-                        onPress={() => deleteEntry(entry.id)}
+                        onPress={() => {
+                          Alert.alert(
+                            "Delete Entry",
+                            "Are you sure you want to delete this item?",
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              {
+                                text: "Delete",
+                                style: "destructive",
+                                onPress: () => deleteEntry(entry.id),
+                              },
+                            ]
+                          );
+                        }}
                       />
                     </View>
                   </View>

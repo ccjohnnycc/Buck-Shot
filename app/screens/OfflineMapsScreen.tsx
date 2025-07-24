@@ -44,7 +44,7 @@ export default function OfflineMapsScreen() {
   const renderItem = ({ item }: { item: string }) => (
     <TouchableOpacity
       onLongPress={() =>
-        Alert.alert('Delete?', 'Do you want to delete this map?', [
+        Alert.alert('Delete Map', 'Are you sure you want to delete this item?', [
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Delete',

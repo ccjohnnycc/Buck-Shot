@@ -123,7 +123,7 @@ export default function GalleryScreen() {
   const handleDelete = async (folder: string) => {
     Alert.alert(
       "Delete Hunt",
-      "Are you sure you want to delete this hunt and all its photos?",
+      "Are you sure you want to delete this item?",
       [
         { text: "Cancel", style: "cancel" },
         {
