@@ -21,6 +21,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 export default function MainTabs() {
     return (
         <Tab.Navigator
+        id={undefined}
             initialRouteName="Profile"
             screenOptions={({ route }) => ({
                 headerShown: false, tabBarIcon: ({ color, size }) => {
