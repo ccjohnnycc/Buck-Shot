@@ -21,12 +21,12 @@ import * as FileSystem from 'expo-file-system';
 import { captureRef } from 'react-native-view-shot';
 import type { CameraView as CameraViewRef } from 'expo-camera';
 import { useIsFocused, useFocusEffect } from '@react-navigation/native';
-import InstructionBanner from '../components/InstructionBanner';
 import DraggableCrosshair from '../components/DraggableCrosshair';
 import * as Location from 'expo-location';
 import { auth } from '../services/firebaseconfig';
 import { uploadTestHunt } from '../services/firebaseUtils';
-
+import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MARKER_SIZE = 40;
@@ -58,6 +58,8 @@ export default function MeasureScreen({ navigation }: any) {
   const [saveJournal, setSaveJournal] = useState(false);
   const containerRef = useRef<View>(null);
   const [allowPlacingMarkers, setAllowPlacingMarkers] = useState(false);
+  const [helpVisible, setHelpVisible] = useState(false);
+  const insets = useSafeAreaInsets();
 
 
   // When screen regains focus, clear everything if there was a previous photo/markers
@@ -222,12 +224,17 @@ export default function MeasureScreen({ navigation }: any) {
           const { coords: c } = await Location.getCurrentPositionAsync({});
           coords = { latitude: c.latitude, longitude: c.longitude };
         }
-        const measurement = inches.toFixed(2);
-        const userName =
-          auth.currentUser?.displayName ?? auth.currentUser?.email ?? 'Unknown';
+        const measurementValue = parseFloat(inches.toFixed(2)); // number
+        const measurementUnit = 'in';                           // inches
+        const measurementLabel = `${measurementValue} ${measurementUnit}`;
+
+        // Get userName from auth.currentUser or set a default value
+        const userName = auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown User';
         navigation.navigate('JournalEntryForm', {
           imageUri: saveUX ? uxSnapshotUri : rawUri,
-          measurement,
+          measurementValue,
+          measurementUnit,
+          measurementLabel,
           coords,
           userName,
         });
@@ -246,11 +253,15 @@ export default function MeasureScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <InstructionBanner
-        message="Drag and drop two markers to measure distance."
-        message2="Adjust slider to match your distance to the object being measured."
-        autoHideDuration={6000}
-      />
+
+      {/* Floating Help Button */}
+      <TouchableOpacity
+        style={[styles.helpFab, { top: insets.top + 12 }]}
+        onPress={() => setHelpVisible(true)}
+      >
+        <Feather name="help-circle" size={24} color="#FFD700" />
+      </TouchableOpacity>
+
 
       {/* Camera + Markers Container */}
       <View
@@ -465,6 +476,62 @@ export default function MeasureScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
+
+      {/* Help Modal */}
+      <Modal
+        visible={helpVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setHelpVisible(false)}
+      >
+        <View style={styles.helpOverlay}>
+          <View style={styles.helpCard}>
+            <View style={styles.helpHeader}>
+              <Feather name="help-circle" size={22} color="#FFD700" />
+              <Text style={styles.helpTitle}>How to Measure </Text>
+            </View>
+
+            <View style={styles.helpItem}>
+              <Feather name="settings" size={18} color="#FFD700" />
+              <Text style={styles.helpText}>Calibrate once (Calibration screen) for accurate sizing. </Text>
+            </View>
+
+            <View style={styles.helpItem}>
+              <Feather name="sliders" size={18} color="#FFD700" />
+              <Text style={styles.helpText}>Stand ~3–8 ft from target and set the distance slider. </Text>
+            </View>
+
+            <View style={styles.helpItem}>
+              <Feather name="camera" size={18} color="#FFD700" />
+              <Text style={styles.helpText}>Tap <Text style={{ fontWeight: '700' }}>Capture Image </Text> to freeze the frame. </Text>
+            </View>
+
+            <View style={styles.helpItem}>
+              <Feather name="move" size={18} color="#FFD700" />
+              <Text style={styles.helpText}>Press <Text style={{ fontWeight: '700' }}>Add Markers </Text>, then drag the two crosshairs to the points you want to measure. </Text>
+            </View>
+
+            <View style={styles.helpItem}>
+              <Feather name="maximize-2" size={18} color="#FFD700" />
+              <Text style={styles.helpText}>The dotted line shows distance; the label updates automatically. </Text>
+            </View>
+
+            <View style={styles.helpItem}>
+              <Feather name="save" size={18} color="#FFD700" />
+              <Text style={styles.helpText}>Choose save options (Raw / Photo+Markers / Journal) and tap <Text style={{ fontWeight: '700' }}>Save </Text>. </Text>
+            </View>
+
+            <View style={styles.helpItem}>
+              <Feather name="folder" size={18} color="#FFD700" />
+              <Text style={styles.helpText}>Use <Text style={{ fontWeight: '700' }}>End Hunt Session </Text> to start a fresh folder next time. </Text>
+            </View>
+
+            <View style={{ marginTop: 12 }}>
+              <Button title="Got it" onPress={() => setHelpVisible(false)} color="#FFD700" />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -547,4 +614,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 20,
   },
+  helpFab: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+  },
+  helpOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center' },
+  helpCard: {
+    width: '86%',
+    backgroundColor: '#222',
+    borderRadius: 12,
+    padding: 18,
+  },
+  helpHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
+  helpTitle: { color: '#FFD700', fontSize: 18, fontWeight: '700' },
+  helpItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
+  helpText: { color: '#eee', flex: 1, lineHeight: 20 },
 });
