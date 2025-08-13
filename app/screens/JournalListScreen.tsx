@@ -48,15 +48,29 @@ export default function JournalListScreen() {
     setRefreshing(false);
   };
 
-  const deleteEntry = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, `users/${auth.currentUser?.uid}/journalEntries`, id));
-      setEntries(prev => prev.filter(e => e.id !== id));
-    } catch (err) {
-      console.error('Delete failed:', err);
-      Alert.alert('Error', 'Failed to delete entry.');
-    }
+  const deleteEntry = (id: string) => {
+    Alert.alert(
+      'Delete Entry',
+      'Are you sure you want to permanently delete this journal entry?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, `users/${auth.currentUser?.uid}/journalEntries`, id));
+              setEntries(prev => prev.filter(e => e.id !== id));
+            } catch (err) {
+              console.error('Delete failed:', err);
+              Alert.alert('Error', 'Failed to delete entry.');
+            }
+          }
+        }
+      ]
+    );
   };
+
 
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
