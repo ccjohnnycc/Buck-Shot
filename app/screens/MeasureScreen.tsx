@@ -29,10 +29,7 @@ import { auth } from '../services/firebaseconfig';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MARKER_SIZE = 40;
 
-// You’ll need to tweak these two constants to exactly match your UI’s sizes:
-//InstructionBanner
 const TOP_UI_HEIGHT = 56; 
-//the slider + buttons at bottom
 const BOTTOM_UI_HEIGHT = 250;  
 
 export default function MeasureScreen({ navigation }: any) {
@@ -117,14 +114,14 @@ export default function MeasureScreen({ navigation }: any) {
   const checkFirstTime = async () => {
     try {
       const flag = await AsyncStorage.getItem('dontShowCaptureHelp');
-      if (flag !== 'true') setShowCaptureHelp(true);
+      if (flag !== 'false') setShowCaptureHelp(true); //demo purposes
+      
     } catch {}
   };
   const unsubscribe = navigation.addListener('focus', checkFirstTime);
   return unsubscribe;
 }, [navigation]);
 
-  // If camera perms aren’t loaded ye
   if (!permission) {
     return (
       <View style={styles.center}>
