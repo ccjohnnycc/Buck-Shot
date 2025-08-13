@@ -10,6 +10,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { Keyboard } from 'react-native';
 import FloridaBoundariesSimplified from '../../json/FloridaBoundariesSimplified.json';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 
 
@@ -55,6 +56,7 @@ export default function MapScreen() {
   const [visiblePolygons, setVisiblePolygons] = useState<ParsedPolygon[]>([]);
   const MAX_POLYGONS = 30;
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const insets = useSafeAreaInsets();
 
 
   const demoPolygons = [
@@ -335,8 +337,10 @@ export default function MapScreen() {
   if (!region) return null;
 
   return (
+  <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
     <ImageBackground source={require('../../assets/background_image.png')} style={{ flex: 1 }}>
-      <View style={styles.searchContainer}>
+      {/* Search */}
+      <View style={[styles.searchContainer, { top: insets.top + 8 }]}>
         <View style={{ paddingHorizontal: 18, marginTop: 12, zIndex: 20 }}>
           <View style={{ flexDirection: 'row' }}>
             <TextInput
@@ -344,61 +348,34 @@ export default function MapScreen() {
               value={search}
               onChangeText={(text) => {
                 setSearch(text);
-
-                if (text.trim().length === 0) {
-                  setSuggestions(recentSearches);
-                } else {
-                  const filtered = recentSearches.filter((s) =>
-                    s.toLowerCase().includes(text.toLowerCase())
-                  );
-                  setSuggestions(filtered);
-                }
+                if (text.trim().length === 0) setSuggestions(recentSearches);
+                else setSuggestions(recentSearches.filter((s) => s.toLowerCase().includes(text.toLowerCase())));
               }}
-              onFocus={() => {
-                if (search.trim() === '') {
-                  setSuggestions(recentSearches);
-                }
-              }}
-              onBlur={() => {
-                setTimeout(() => setSuggestions([]), 100);
-              }}
+              onFocus={() => { if (search.trim() === '') setSuggestions(recentSearches); }}
+              onBlur={() => { setTimeout(() => setSuggestions([]), 100); }}
               placeholder="Search for a place"
               placeholderTextColor="#ccc"
               returnKeyType="search"
-              onSubmitEditing={() => {
-                handleSearch();
-                Keyboard.dismiss();
-              }}
+              onSubmitEditing={() => { handleSearch(); Keyboard.dismiss(); }}
             />
             <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
-              <Text style={{ color: '#fff' }}>Search</Text>
+              <Text style={{ color: '#fff' }}>Search </Text>
             </TouchableOpacity>
           </View>
 
           {suggestions.length > 0 && (
-            <View style={{
-              backgroundColor: '#222',
-              borderRadius: 8,
-              marginTop: 4,
-              elevation: 4
-            }}>
+            <View style={{ backgroundColor: '#222', borderRadius: 8, marginTop: 4, elevation: 4 }}>
               {suggestions.map((item, i) => (
                 <TouchableOpacity
                   key={i}
-                  onPress={() => {
-                    setSearch(item);
-                    setSuggestions([]);
-                    handleSearch();
-                    Keyboard.dismiss();
-                  }}
+                  onPress={() => { setSearch(item); setSuggestions([]); handleSearch(); Keyboard.dismiss(); }}
                   style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
+                    paddingVertical: 8, paddingHorizontal: 12,
                     borderBottomColor: '#444',
                     borderBottomWidth: i < suggestions.length - 1 ? 1 : 0
                   }}
                 >
-                  <Text style={{ color: '#fff' }}>{item}</Text>
+                  <Text style={{ color: '#fff' }}>{item} </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -406,32 +383,27 @@ export default function MapScreen() {
         </View>
       </View>
 
+      {/* (Optional) Recent searches */}
       {recentSearches.length > 0 && (
         <View style={{ paddingHorizontal: 18, marginTop: 5 }}>
-          <Text style={{ color: '#ccc', marginBottom: 4 }}>Recent Searches:</Text>
+          <Text style={{ color: '#ccc', marginBottom: 4 }}>Recent Searches: </Text>
           {recentSearches.map((item, i) => (
             <TouchableOpacity key={i} onPress={() => setSearch(item)}>
-              <Text style={{ color: '#fff', paddingVertical: 2 }}>{item}</Text>
+              <Text style={{ color: '#fff', paddingVertical: 2 }}>{item} </Text>
             </TouchableOpacity>
           ))}
+          <TouchableOpacity onPress={async () => { await AsyncStorage.removeItem('recentSearches'); setRecentSearches([]); }}>
+            <Text style={{ color: '#f66', fontSize: 12 }}>Clear </Text>
+          </TouchableOpacity>
         </View>
       )}
 
-      <TouchableOpacity onPress={async () => {
-        await AsyncStorage.removeItem('recentSearches');
-        setRecentSearches([]);
-      }}>
-        <Text style={{ color: '#f66', fontSize: 12 }}>Clear</Text>
-      </TouchableOpacity>
-
-      <View style={styles.sidebar}>
+      {/* Sidebar */}
+      <View style={[styles.sidebar, { top: insets.top + 120 }]}>
         {(['Tree Stand', 'Pin', 'Cam', 'Feeder'] as HuntPin['tag'][]).map((tag) => (
           <TouchableOpacity
             key={tag}
-            style={[
-              styles.sidebarButton,
-              filterTag === tag && styles.sidebarButtonActive
-            ]}
+            style={[styles.sidebarButton, filterTag === tag && styles.sidebarButtonActive]}
             onPress={() => setFilterTag(filterTag === tag ? null : tag)}
           >
             <Image source={iconMap[tag]} style={styles.sidebarIcon} />
@@ -439,18 +411,15 @@ export default function MapScreen() {
         ))}
 
         <TouchableOpacity
-          style={[
-            styles.sidebarButton,
-            showBoundaries && styles.sidebarButtonActive
-          ]}
+          style={[styles.sidebarButton, showBoundaries && styles.sidebarButtonActive]}
           onPress={() => setShowBoundaries(prev => !prev)}
         >
           <Text style={{ color: '#fff', fontSize: 12, textAlign: 'center' }}>
-            {showBoundaries ? 'Hide\nBoundaries' : 'Show\nBoundaries'}
-          </Text>
+            {showBoundaries ? 'Hide\nBoundaries' : 'Show\nBoundaries'} </Text>
         </TouchableOpacity>
       </View>
 
+      {/* Map */}
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
@@ -489,13 +458,13 @@ export default function MapScreen() {
               />
             ))
         }
-
       </MapView>
 
+      {/* Active pin actions */}
       {activePin && (
         <View style={styles.deletePinOverlay}>
-          <Text style={styles.deleteText}>Title: {activePin.title}</Text>
-          <Text style={styles.deleteText}>Type: {activePin.tag}</Text>
+          <Text style={styles.deleteText}>Title: {activePin.title} </Text>
+          <Text style={styles.deleteText}>Type: {activePin.tag} </Text>
           <Button
             title="Delete Pin"
             color="#ff4444"
@@ -510,30 +479,29 @@ export default function MapScreen() {
         </View>
       )}
 
-      <View style={styles.buttonStack}>
-        <TouchableOpacity style={[styles.mapButton, styles.findBtn]} onPress={goToUserLocation}>
-          <Text style={styles.mapButtonText}>Find Me</Text>
-        </TouchableOpacity>
+      {/* Unified bottom tray (responsive) */}
+      <View pointerEvents="box-none" style={styles.trayOverlay}>
+        <View style={[styles.tray, { paddingBottom: insets.bottom + 12 }]}>
+          <TouchableOpacity style={[styles.trayBtn, styles.trayBtnDanger]} onPress={goToUserLocation}>
+            <Text style={styles.trayBtnTextLight}>Find Me </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.mapButton, styles.viewBtn]} onPress={() => navigation.navigate('OfflineMaps')}>
-          <Text style={styles.mapButtonText}>View Saved Maps</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={[styles.trayBtn, styles.trayBtnInfo]} onPress={() => navigation.navigate('OfflineMaps')}>
+            <Text style={styles.trayBtnTextLight}>View Saved Maps </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.mapButton, styles.saveBtn]} onPress={saveMapSnapshot}>
-          <Text style={styles.mapButtonTextDark}>Save Map</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={[styles.trayBtn, styles.trayBtnGold]} onPress={saveMapSnapshot}>
+            <Text style={styles.trayBtnTextDark}>Save Map </Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Add-pin modal */}
       {selectedCoords && (
         <View style={styles.modal}>
-          <Text style={styles.modalTitle}>Tag this location</Text>
+          <Text style={styles.modalTitle}>Tag this location </Text>
           <TextInput
-            style={{
-              backgroundColor: '#222',
-              color: '#fff',
-              padding: 10,
-              borderRadius: 6,
-              marginBottom: 12,
-            }}
+            style={{ backgroundColor: '#222', color: '#fff', padding: 10, borderRadius: 6, marginBottom: 12 }}
             placeholder="Optional pin title (e.g. North Feeder)"
             placeholderTextColor="#aaa"
             value={customTitle}
@@ -558,26 +526,26 @@ export default function MapScreen() {
                 setCustomTitle('');
               }}
             >
-              <Text style={styles.modalButtonText}>{type}</Text>
+              <Text style={styles.modalButtonText}>{type} </Text>
             </TouchableOpacity>
           ))}
           <Button title="Cancel" onPress={() => setSelectedCoords(null)} />
         </View>
       )}
     </ImageBackground>
-  );
+  </SafeAreaView>
+);
+
 }
 
 const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#000' },
+
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' },
 
   searchContainer: {
     position: 'absolute',
-    top: 54,
     left: 0,
     right: 0,
     paddingHorizontal: 18,
@@ -601,19 +569,78 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  findMeBtn: {
+
+  sidebar: {
     position: 'absolute',
-    bottom: 15,
     right: 10,
-    backgroundColor: '#2f95dc',
-    borderRadius: 20,
-    paddingVertical: 13,
-    paddingHorizontal: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 3,
-    zIndex: 2,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    zIndex: 10,
   },
+  sidebarButton: { padding: 5, alignItems: 'center' },
+  sidebarButtonActive: { backgroundColor: '#FFD700', borderRadius: 2 },
+  sidebarIcon: { width: 35, height: 35, resizeMode: 'contain' },
+
+  deletePinOverlay: {
+    position: 'absolute',
+    bottom: 20,
+    left: '20%',
+    right: '20%',
+    backgroundColor: '#222',
+    padding: 5,
+    borderRadius: 10,
+    zIndex: 5,
+    alignItems: 'center',
+  },
+  deleteText: { color: '#fff', fontSize: 16, marginBottom: 10 },
+
+  // ---- New unified bottom tray ----
+  trayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  tray: {
+    width: '94%',
+    maxWidth: 540,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingTop: 20,
+    marginHorizontal: 8,
+
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'space-between',
+
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  trayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    minWidth: 110,
+    flexGrow: 1,
+
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+  },
+  trayBtnDanger: { backgroundColor: '#FF0000' },
+  trayBtnInfo: { backgroundColor: '#2f95dc' },
+  trayBtnGold: { backgroundColor: '#FFD700' },
+  trayBtnTextLight: { color: '#fff', fontWeight: '700' },
+  trayBtnTextDark: { color: '#000', fontWeight: '700' },
+
+  // Modal
   modal: {
     position: 'absolute',
     top: '30%',
@@ -624,108 +651,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     zIndex: 10,
   },
-  modalTitle: {
-    color: '#FFD700',
-    fontSize: 18,
-    marginBottom: 10,
-    textAlign: 'center'
-  },
-  modalButton: {
-    backgroundColor: '#FFD700',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 10
-  },
-  modalButtonText: {
-    color: '#000',
-    fontWeight: 'bold',
-    textAlign: 'center'
-  },
-  deletePinOverlay: {
-    position: 'absolute',
-    bottom: 20,
-    top: 'auto',
-    left: '20%',
-    right: '20%',
-    backgroundColor: '#222',
-    padding: 5,
-    borderRadius: 10,
-    zIndex: 5,
-    alignItems: 'center',
-  },
-  deleteText: {
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  sidebar: {
-    position: 'absolute',
-    right: 10,
-    top: 150,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 12,
-    paddingVertical: 10,
-    zIndex: 10,
-  },
-  sidebarButton: {
-    padding: 5,
-    alignItems: 'center',
-  },
-  sidebarButtonActive: {
-    backgroundColor: '#FFD700',
-    borderRadius: 2,
-  },
-  sidebarIcon: {
-    width: 35,
-    height: 35,
-    resizeMode: 'contain',
-  },
-  buttonStack: {
-    position: 'absolute',
-    right: 15,
-    bottom: 25,
-    zIndex: 10,
-    alignItems: 'flex-end',
-  },
-
-  mapButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    marginBottom: 12,
-    minWidth: 140,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 3,
-  },
-
-  viewBtn: {
-    backgroundColor: '#2f95dc',
-    top: 30,
-  },
-
-  saveBtn: {
-    backgroundColor: '#FFD700',
-    position: 'absolute',
-  },
-
-  findBtn: {
-    backgroundColor: '#FF0000',
-    top: 40,
-  },
-
-  mapButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-
-  mapButtonTextDark: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
+  modalTitle: { color: '#FFD700', fontSize: 18, marginBottom: 10, textAlign: 'center' },
+  modalButton: { backgroundColor: '#FFD700', padding: 10, borderRadius: 8, marginBottom: 10 },
+  modalButtonText: { color: '#000', fontWeight: 'bold', textAlign: 'center' },
 });
