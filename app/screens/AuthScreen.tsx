@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
 import { auth } from '../services/firebaseconfig';
 import { onAuthStateChanged } from 'firebase/auth';
+import BSButton from '../components/BSButton';
 
 type AuthNavProp = NativeStackNavigationProp<RootStackParamList, 'AuthLanding'>;
 
@@ -17,23 +18,23 @@ export default function AuthLandingScreen() {
   const logo = require('../../assets/title_buck.png'); // buck logo
   const icon = require('../../assets/Buck-Shot_noBack.png'); // buck shot icon
 
-useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      console.log('Auth state changed: Logged in as', user.email);
-      await AsyncStorage.setItem('userEmail', user.email || '');
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Main' }],
-      });
-    } else {
-      console.log('Auth state changed: Not logged in');
-      await AsyncStorage.removeItem('userEmail');
-    }
-  });
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        console.log('Auth state changed: Logged in as', user.email);
+        await AsyncStorage.setItem('userEmail', user.email || '');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Main' }],
+        });
+      } else {
+        console.log('Auth state changed: Not logged in');
+        await AsyncStorage.removeItem('userEmail');
+      }
+    });
 
-  return unsubscribe;
-}, []);
+    return unsubscribe;
+  }, []);
 
   return (
     <ImageBackground source={background} style={styles.background}>
@@ -44,15 +45,19 @@ useEffect(() => {
 
         <Image source={icon} style={styles.iconImage} resizeMode="contain" />
 
-        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.buttonText}>Sign in </Text>
-        </TouchableOpacity>
+        <BSButton
+          variant="primary"
+          label="Sign in"
+          onPress={() => navigation.navigate('Login')}
+        />
 
         <Text style={styles.orText}>OR </Text>
 
-        <TouchableOpacity style={styles.guestButton} onPress={() => navigation.navigate('Main')}>
-          <Text style={styles.guestText}>Continue as guest </Text>
-        </TouchableOpacity>
+        <BSButton
+          variant="ghost"
+          label="Continue as guest"
+          onPress={() => navigation.navigate('Main')}
+        />
 
         <TouchableOpacity>
           <Text style={styles.link}>Forgot password?</Text>
@@ -78,7 +83,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 80, 
+    paddingTop: 80,
     paddingBottom: 40,
     paddingHorizontal: 20,
   },

@@ -3,12 +3,10 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
-  Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -17,6 +15,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../services/firebaseconfig';
 import { AuthBackground } from './AuthBackground';
 import { Feather } from '@expo/vector-icons';
+import BSButton from '../components/BSButton';
 
 type RootStackParamList = {
   Main: undefined;
@@ -56,16 +55,12 @@ export default function LoginScreen() {
       style={styles.container}
     >
       <AuthBackground>
-        <Text style={styles.title}>Sign In </Text>
+        <Text style={styles.title}>Sign In</Text>
+
         <TextInput
           style={[
             styles.input,
-            {
-              textAlign:
-                emailFocused || email.length > 0
-                  ? 'left'
-                  : 'center',
-            },
+            { textAlign: emailFocused || email.length > 0 ? 'left' : 'center' },
           ]}
           placeholder={emailFocused ? '' : 'Email'}
           placeholderTextColor="#ccc"
@@ -73,17 +68,14 @@ export default function LoginScreen() {
           onChangeText={setEmail}
           onFocus={() => setEmailFocused(true)}
           onBlur={() => setEmailFocused(false)}
+          autoCapitalize="none"
+          keyboardType="email-address"
         />
 
         <TextInput
           style={[
             styles.input,
-            {
-              textAlign:
-                passwordFocused || password.length > 0
-                  ? 'left'
-                  : 'center',
-            },
+            { textAlign: passwordFocused || password.length > 0 ? 'left' : 'center' },
           ]}
           placeholder={passwordFocused ? '' : 'Password'}
           placeholderTextColor="#ccc"
@@ -94,18 +86,17 @@ export default function LoginScreen() {
           onBlur={() => setPasswordFocused(false)}
         />
 
-        {error && <Text style={styles.errorText}>{error} </Text>}
+        {error && <Text style={styles.errorText}>{error}</Text>}
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+        <BSButton
+          label="Login"
           onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.buttonText}>Login </Text>}
-        </TouchableOpacity>
+          loading={loading}
+          style={{ width: '100%', marginTop: 10 }}
+        />
 
         <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-          <Text style={styles.toggleText}>Don't have an account? Sign Up </Text>
+          <Text style={styles.toggleText}>Don't have an account? Sign Up</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -114,8 +105,6 @@ export default function LoginScreen() {
         >
           <Feather name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>
-
-
       </AuthBackground>
     </KeyboardAvoidingView>
   );
@@ -134,19 +123,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
   },
-  button: {
-    width: '100%',
-    backgroundColor: '#FFD700',
-    padding: 15,
-    borderRadius: 30,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#000', fontSize: 18, fontWeight: 'bold' },
   errorText: { color: '#FF4C4C', marginBottom: 12 },
   toggleText: { color: '#FFD700', marginTop: 16, fontWeight: '600' },
-
   backButton: {
     position: 'absolute',
     top: 25,

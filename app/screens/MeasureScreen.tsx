@@ -55,6 +55,8 @@ export default function MeasureScreen({ navigation }: any) {
   const [saveUX, setSaveUX] = useState(false);
   const [saveJournal, setSaveJournal] = useState(false);
   const containerRef = useRef<View>(null);
+  const [showCaptureHelp, setShowCaptureHelp] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   /*useFocusEffect(
     React.useCallback(() => {
@@ -110,6 +112,17 @@ export default function MeasureScreen({ navigation }: any) {
       }
     })();
   }, [isFocused, navigation]);
+
+  useEffect(() => {
+  const checkFirstTime = async () => {
+    try {
+      const flag = await AsyncStorage.getItem('dontShowCaptureHelp');
+      if (flag !== 'true') setShowCaptureHelp(true);
+    } catch {}
+  };
+  const unsubscribe = navigation.addListener('focus', checkFirstTime);
+  return unsubscribe;
+}, [navigation]);
 
   // If camera perms aren’t loaded ye
   if (!permission) {
@@ -264,11 +277,74 @@ export default function MeasureScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <InstructionBanner
+        {/* First-time helper overlay */}
+    {showCaptureHelp && (
+      <View style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        padding: 20,
+        justifyContent: 'center',
+        zIndex: 999
+      }}>
+        <View style={{
+          backgroundColor: '#222',
+          borderRadius: 12,
+          padding: 18,
+          marginHorizontal: 18
+        }}>
+          <Text style={{
+            color: '#FFD700',
+            fontSize: 18,
+            fontWeight: 'bold',
+            marginBottom: 10,
+            textAlign: 'center'
+          }}>
+            How to Capture & Measure
+          </Text>
+          <Text style={{ color: '#fff', marginBottom: 8 }}>
+            • Drag the two crosshairs to the tips you want to measure.{'\n'}
+            • Use the slider to set your distance from the object (inches).{'\n'}
+            • Tap “Capture Image,” then “Save to Hunt Folder” to keep it.{'\n'}
+            • “Photo + Markers” saves an annotated copy with measurement.
+          </Text>
+
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginTop: 8,
+            marginBottom: 12,
+            justifyContent: 'space-between'
+          }}>
+            <Text style={{ color: '#fff' }}>Don’t show again</Text>
+            <Switch value={dontShowAgain} onValueChange={setDontShowAgain} />
+          </View>
+
+          <TouchableOpacity
+            onPress={async () => {
+              if (dontShowAgain) {
+                await AsyncStorage.setItem('dontShowCaptureHelp', 'true');
+              }
+              setShowCaptureHelp(false);
+            }}
+            style={{
+              backgroundColor: '#FFD700',
+              paddingVertical: 10,
+              borderRadius: 8,
+              alignItems: 'center'
+            }}
+          >
+            <Text style={{ color: '#000', fontWeight: 'bold' }}>Got it</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )}
+
+      {/* <InstructionBanner
         message="Drag and drop two markers to measure distance."
         message2="Adjust slider to match your distance to the object being measured."
         autoHideDuration={6000}
-      />
+      /> */}
 
       {/* Camera + Markers Container */}
       <View

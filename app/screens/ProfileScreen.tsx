@@ -1,19 +1,27 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, Button, ActivityIndicator, ImageBackground, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  ActivityIndicator,
+  ImageBackground,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { uploadTestHunt } from '../services/firebaseUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../services/firebaseconfig';
+import { collection, getDocs } from 'firebase/firestore';
+import { db, auth } from '../services/firebaseconfig';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { auth } from '../services/firebaseconfig';
 import { signOut } from 'firebase/auth';
 import { registerForPushNotificationsAsync, scheduleSeasonNotifications } from './notifications';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
+import BSButton from '../components/BSButton';
 
 const ProfileScreen = () => {
   const [status, setStatus] = useState<string>('');
@@ -37,7 +45,7 @@ const ProfileScreen = () => {
     });
   }, []);
 
-  const fetchStats = async (userEmail: string) => {
+  const fetchStats = async (_userEmail: string) => {
     const user = auth.currentUser;
     if (!user) return;
 
@@ -73,18 +81,11 @@ const ProfileScreen = () => {
     }
   };
 
-
   const handleLogout = async () => {
     try {
-
       await signOut(auth);
-
       await AsyncStorage.removeItem('userEmail');
-
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'AuthLanding' }],
-      });
+      navigation.reset({ index: 0, routes: [{ name: 'AuthLanding' }] });
     } catch (err: any) {
       Alert.alert('Logout failed', err.message);
     }
@@ -111,15 +112,13 @@ const ProfileScreen = () => {
     }
   };
 
-
   const handleUpload = async () => {
     setStatus('Uploading test hunt…');
     setLoading(true);
-
     try {
       const result = await uploadTestHunt();
       if (result.success) {
-        setStatus(`Uploaded`);
+        setStatus('Uploaded');
         await fetchStats(email || (await AsyncStorage.getItem('userEmail')) || '');
       } else {
         setStatus('Upload failed. See console.');
@@ -132,13 +131,11 @@ const ProfileScreen = () => {
     }
   };
 
-
   useEffect(() => {
     registerForPushNotificationsAsync().then(() => {
       scheduleSeasonNotifications();
     });
   }, []);
-
 
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
@@ -149,13 +146,14 @@ const ProfileScreen = () => {
             source={
               profileImage
                 ? { uri: profileImage }
-                : require('../../assets/placeholder_user.png') // Add a default icon here
+                : require('../../assets/placeholder_user.png')
             }
             style={styles.profilePic}
           />
         </TouchableOpacity>
+
         <Feather name="user" size={80} color="#FFD700" />
-        <Text style={styles.title}>My Profile </Text>
+        <Text style={styles.title}>My Profile</Text>
 
         <View style={styles.statsBox}>
           <Text style={styles.stat}>Email: {name || email || 'Guest'}</Text>
@@ -163,42 +161,45 @@ const ProfileScreen = () => {
           <Text style={styles.stat}>Journal Entries: {journalCount}</Text>
         </View>
 
+        {/* Navigation Buttons */}
         <View style={styles.buttonGroup}>
-          <TouchableOpacity
-            style={styles.menuButton}
+          <BSButton
+            label="View Journal"
             onPress={() => navigation.navigate({ name: 'JournalList', params: {} })}
-          >
-            <Text style={styles.buttonText}>View Journal </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuButton}
+            style={{ width: '100%', marginBottom: 12 }}
+          />
+          <BSButton
+            label="View Hunt Gallery"
             onPress={() => navigation.navigate({ name: 'Gallery', params: {} })}
-          >
-            <Text style={styles.buttonText}>View Hunt Gallery </Text>
-          </TouchableOpacity>
+            style={{ width: '100%' }}
+          />
         </View>
 
+        {/* Bottom actions */}
         <View style={styles.bottomButtons}>
-          <Button
-            title="Sync to Cloud"
+          <BSButton
+            label="Sync to Cloud"
             onPress={handleUpload}
-            color="#FFA500"
-            disabled={loading}
+            loading={loading}
+            variant="secondary"
+            style={{ width: '100%' }}
           />
 
-          {/* <TouchableOpacity
-            style={[styles.menuButton, { backgroundColor: '#2f95dc' }]}
+          {/* Example: keep this commented action available as a shared button too */}
+          {/* <View style={{ marginVertical: 8 }} />
+          <BSButton
+            label="Send Test Notification"
             onPress={sendTestNotification}
-          >
-            <Text style={styles.buttonText}>Send Test Notification</Text>
-          </TouchableOpacity> */}
+            variant="primary"
+            style={{ width: '100%' }}
+          /> */}
+
           <View style={{ marginVertical: 8 }} />
-          <View style={{ marginVertical: 8 }} />
-          <Button
-            title="Logout"
+          <BSButton
+            label="Logout"
             onPress={handleLogout}
-            color="#ff4444"
+            variant="danger"
+            style={{ width: '100%' }}
           />
         </View>
 
@@ -206,26 +207,23 @@ const ProfileScreen = () => {
         {loading && <ActivityIndicator size="large" color="#FFD700" />}
       </View>
 
-      <TouchableOpacity
-        style={styles.menuButton}
-        onPress={() => navigation.navigate('HarvestReports')}
-      >
-        <Text style={styles.buttonText}>Deer Harvest Reports</Text>
-      </TouchableOpacity>
+      {/* Link to Deer Harvest Reports */}
+      <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+        <BSButton
+          label="Deer Harvest Reports"
+          onPress={() => navigation.navigate('HarvestReports')}
+          style={{ width: '100%' }}
+        />
+      </View>
     </ImageBackground>
   );
-}
+};
 
 export default ProfileScreen;
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
+  background: { flex: 1 },
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
   container: {
     flex: 1,
     alignItems: 'center',
@@ -251,42 +249,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
   },
-  stat: {
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 6,
-  },
-  buttonGroup: {
-    width: '90%',
-    marginBottom: 20,
-  },
-  menuButton: {
-    backgroundColor: '#FFD700',
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  bottomButtons: {
-    marginTop: 10,
-    width: '80%',
-  },
-  status: {
-    marginTop: 20,
-    color: '#fff',
-    fontStyle: 'italic',
-  },
+  stat: { color: '#fff', fontSize: 16, marginBottom: 6 },
+  buttonGroup: { width: '90%', marginBottom: 20 },
+  bottomButtons: { marginTop: 10, width: '80%' },
+  status: { marginTop: 20, color: '#fff', fontStyle: 'italic' },
   profilePic: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 2,
-    borderColor: '#FFD700',
-    marginBottom: 10,
+    width: 100, height: 100, borderRadius: 50,
+    borderWidth: 2, borderColor: '#FFD700', marginBottom: 10,
   },
 });

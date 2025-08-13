@@ -1,15 +1,16 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground,
-  Button, Alert, Image, RefreshControl
+  Alert, Image, RefreshControl
 } from 'react-native';
-import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { collection, getDocs, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseconfig';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import TagInput from '../components/TagInput';
 import { Feather } from '@expo/vector-icons';
+import BSButton from '../components/BSButton';
 
 type JournalNavProp = NativeStackNavigationProp<RootStackParamList, 'JournalList'>;
 
@@ -67,14 +68,20 @@ export default function JournalListScreen() {
       >
         <Feather name="arrow-left" size={24} color="#fff" />
       </TouchableOpacity>
-      <ScrollView contentContainerStyle={styles.container} refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
+
+      <ScrollView
+        contentContainerStyle={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <Text style={styles.title}>Journal Entries</Text>
+
         <TagInput tags={filterTags} setTags={setFilterTags} placeholder="Filter by tags…" />
+
         <View style={styles.buttonWrapper}>
-          <Button title="New Entry" onPress={() => navigation.navigate('JournalEntryForm', { entryId: undefined })} />
+          <BSButton
+            label="New Entry"
+            onPress={() => navigation.navigate('JournalEntryForm', { entryId: undefined })}
+          />
         </View>
 
         {entries.length === 0 ? (
@@ -91,37 +98,38 @@ export default function JournalListScreen() {
                   <Text style={styles.details}>
                     Date: {new Date(entry.timestamp).toLocaleDateString()}
                   </Text>
+
                   <View style={styles.actionRow}>
-                    <View style={styles.actionButton}>
-                      <Button
-                        title="Edit"
-                        onPress={() =>
-                          navigation.navigate('JournalEntryForm', { entryId: entry.id })
-                        }
-                      />
-                    </View>
-                    <View style={styles.actionButton}>
-                      <Button
-                        title="Delete"
-                        color="#ff4444"
-                        onPress={() => {
-                          Alert.alert(
-                            "Delete Entry",
-                            "Are you sure you want to delete this item?",
-                            [
-                              { text: "Cancel", style: "cancel" },
-                              {
-                                text: "Delete",
-                                style: "destructive",
-                                onPress: () => deleteEntry(entry.id),
-                              },
-                            ]
-                          );
-                        }}
-                      />
-                    </View>
+                    <BSButton
+                      variant="secondary"
+                      label="Edit"
+                      onPress={() =>
+                        navigation.navigate('JournalEntryForm', { entryId: entry.id })
+                      }
+                      style={styles.actionButton}
+                    />
+                    <BSButton
+                      variant="danger"
+                      label="Delete"
+                      onPress={() => {
+                        Alert.alert(
+                          'Delete Entry',
+                          'Are you sure you want to delete this item?',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Delete',
+                              style: 'destructive',
+                              onPress: () => deleteEntry(entry.id),
+                            },
+                          ]
+                        );
+                      }}
+                      style={styles.actionButton}
+                    />
                   </View>
                 </View>
+
                 {entry.imageUri && (
                   <Image source={{ uri: entry.imageUri }} style={styles.thumbnail} />
                 )}
@@ -182,7 +190,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-
   thumbnail: {
     width: 80,
     height: 80,
@@ -192,12 +199,11 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     marginTop: 10,
   },
   actionButton: {
     flex: 1,
-    marginHorizontal: 2
+    marginHorizontal: 4,
   },
   backButton: {
     position: 'absolute',

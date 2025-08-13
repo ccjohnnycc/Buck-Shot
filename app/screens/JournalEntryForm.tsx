@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ImageBackground, Alert, ScrollView, Image, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  ImageBackground,
+  Alert,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
@@ -10,6 +20,7 @@ import TagInput from '../components/TagInput';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
+import BSButton from '../components/BSButton';
 
 type EntryRouteProp = RouteProp<RootStackParamList, 'JournalEntryForm'>;
 
@@ -31,58 +42,58 @@ export default function JournalScreen() {
   });
 
   // Load existing entry if editing
-useEffect(() => {
-  const loadEntry = async () => {
-    const user = auth.currentUser;
-    if (!user) return;
+  useEffect(() => {
+    const loadEntry = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
 
-    setUserEmail(user.email || userName || 'Unknown');
+      setUserEmail(user.email || userName || 'Unknown');
 
-    if (!entryId) {
-      if (incomingUri) setImageUri(incomingUri);
-      if (coords) {
-        const loc = `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`;
-        setEntry(prev => ({ ...prev, location: loc }));
-      } else {
-        try {
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status !== 'granted') throw new Error('Permission denied');
-          const current = await Location.getCurrentPositionAsync();
-          const loc = `${current.coords.latitude.toFixed(5)}, ${current.coords.longitude.toFixed(5)}`;
+      if (!entryId) {
+        if (incomingUri) setImageUri(incomingUri);
+        if (coords) {
+          const loc = `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`;
           setEntry(prev => ({ ...prev, location: loc }));
-        } catch (err) {
-          console.warn('Location error:', err);
+        } else {
+          try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') throw new Error('Permission denied');
+            const current = await Location.getCurrentPositionAsync();
+            const loc = `${current.coords.latitude.toFixed(5)}, ${current.coords.longitude.toFixed(5)}`;
+            setEntry(prev => ({ ...prev, location: loc }));
+          } catch (err) {
+            console.warn('Location error:', err);
+          }
         }
+
+        if (measurement) {
+          setEntry(prev => ({ ...prev, width: measurement }));
+        }
+
+        setLocLoading(false);
+        return;
       }
 
-      if (measurement) {
-        setEntry(prev => ({ ...prev, width: measurement }));
+      // Editing existing entry
+      const entryRef = doc(db, `users/${user.uid}/journalEntries`, entryId);
+      const snapshot = await getDoc(entryRef);
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        setEntry({
+          species: data.species || '',
+          width: data.width || '',
+          notes: data.notes || '',
+          location: data.location || '',
+        });
+        setImageUri(data.imageUri || null);
+        setTags(data.tags || []);
       }
 
       setLocLoading(false);
-      return;
-    }
+    };
 
-    // Editing existing entry
-    const entryRef = doc(db, `users/${user.uid}/journalEntries`, entryId);
-    const snapshot = await getDoc(entryRef);
-    if (snapshot.exists()) {
-      const data = snapshot.data();
-      setEntry({
-        species: data.species || '',
-        width: data.width || '',
-        notes: data.notes || '',
-        location: data.location || '',
-      });
-      setImageUri(data.imageUri || null);
-      setTags(data.tags || []);
-    }
-
-    setLocLoading(false);
-  };
-
-  loadEntry();
-}, [entryId]);
+    loadEntry();
+  }, [entryId]);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -98,42 +109,42 @@ useEffect(() => {
   };
 
   const handleSave = async () => {
-  if (!entry.species || !imageUri) {
-    Alert.alert("Missing Info", "Please add a species name and photo.");
-    return;
-  }
-
-  try {
-    const user = auth.currentUser;
-    if (!user) {
-      Alert.alert("Not logged in", "Please log in to save journal entries.");
+    if (!entry.species || !imageUri) {
+      Alert.alert('Missing Info', 'Please add a species name and photo.');
       return;
     }
 
-    const userRef = collection(db, `users/${user.uid}/journalEntries`);
-    const payload = {
-      ...entry,
-      imageUri,
-      timestamp: new Date().toISOString(),
-      tags,
-    };
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        Alert.alert('Not logged in', 'Please log in to save journal entries.');
+        return;
+      }
 
-    if (entryId) {
-      await setDoc(doc(userRef, entryId), payload); // update
-    } else {
-      await addDoc(userRef, payload); // new
+      const userRef = collection(db, `users/${user.uid}/journalEntries`);
+      const payload = {
+        ...entry,
+        imageUri,
+        timestamp: new Date().toISOString(),
+        tags,
+      };
+
+      if (entryId) {
+        await setDoc(doc(userRef, entryId), payload); // update
+      } else {
+        await addDoc(userRef, payload); // new
+      }
+
+      Alert.alert('Success', 'Journal entry saved.');
+      setEntry({ species: '', width: '', notes: '', location: '' });
+      setImageUri(null);
+      setTags([]);
+      navigation.goBack();
+    } catch (err) {
+      console.error('Error saving journal:', err);
+      Alert.alert('Error', 'Failed to save entry.');
     }
-
-    Alert.alert("Success", "Journal entry saved.");
-    setEntry({ species: '', width: '', notes: '', location: '' });
-    setImageUri(null);
-    setTags([]);
-    navigation.goBack();
-  } catch (err) {
-    console.error("Error saving journal:", err);
-    Alert.alert("Error", "Failed to save entry.");
-  }
-};
+  };
 
   return (
     <ImageBackground
@@ -141,12 +152,10 @@ useEffect(() => {
       style={styles.background}
     >
       <View style={styles.overlay} />
-      <TouchableOpacity
-  style={styles.backButton}
-  onPress={() => navigation.goBack()}
->
-  <Feather name="arrow-left" size={24} color="#fff" />
-</TouchableOpacity>
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Feather name="arrow-left" size={24} color="#fff" />
+      </TouchableOpacity>
+
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Hunt Journal </Text>
 
@@ -185,6 +194,7 @@ useEffect(() => {
           value={entry.notes}
           onChangeText={text => setEntry({ ...entry, notes: text })}
         />
+
         <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.imagePreview} />
@@ -193,17 +203,20 @@ useEffect(() => {
           )}
         </TouchableOpacity>
 
-          <TagInput tags={tags} setTags={setTags} placeholder="Add tags like 'rifle' or 'morning'" />
-        <Button title="Save Entry" onPress={handleSave} />
+        <TagInput tags={tags} setTags={setTags} placeholder="Add tags like 'rifle' or 'morning'" />
+
+        <BSButton
+          label="Save Entry"
+          onPress={handleSave}
+          style={{ width: '90%', marginTop: 8 }}
+        />
       </ScrollView>
     </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
+  background: { flex: 1 },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -251,13 +264,13 @@ const styles = StyleSheet.create({
     marginLeft: '5%',
   },
   backButton: {
-  position: 'absolute',
-  top: 30,
-  left: 10,
-  paddingVertical: 6,
-  paddingHorizontal: 14,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  borderRadius: 10,
-  zIndex: 10,
-},
+    position: 'absolute',
+    top: 30,
+    left: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 10,
+    zIndex: 10,
+  },
 });

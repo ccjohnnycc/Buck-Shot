@@ -1,37 +1,54 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Dimensions, TouchableOpacity, Modal, Button, Alert, ImageBackground, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Image,
+  Dimensions,
+  TouchableOpacity,
+  Modal,
+  Alert,
+  ImageBackground,
+  TextInput,
+} from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { Query, DocumentData, collection, getDocs, deleteDoc, doc, query, where, updateDoc } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  deleteDoc,
+  doc,
+  query,
+  where,
+  updateDoc,
+} from 'firebase/firestore';
 import { auth, db } from '../services/firebaseconfig';
-import { useRoute, RouteProp } from '@react-navigation/native';
 import TagInput from '../components/TagInput';
 import { Feather } from '@expo/vector-icons';
-
-
+import BSButton from '../components/BSButton';
 
 const screenWidth = Dimensions.get('window').width;
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Gallery'>;
-type GalleryNavProp = NativeStackNavigationProp<RootStackParamList, 'Gallery'>;
-type GalleryRouteProp = RouteProp<RootStackParamList, 'Gallery'>;
 
 export default function GalleryScreen() {
-  const [huntFolders, setHuntFolders] = useState<Array<{
-    title: string;
-    folder: string;
-    previewUri: string;
-    photoCount: number;
-    date: string;
-    tags?: string[];
-  }>>([]);
+  const [huntFolders, setHuntFolders] = useState<
+    Array<{
+      title: string;
+      folder: string;
+      previewUri: string;
+      photoCount: number;
+      date: string;
+      tags?: string[];
+    }>
+  >([]);
 
   const [renamingFolder, setRenamingFolder] = useState<string | null>(null);
   const [renameInput, setRenameInput] = useState('');
   const [showRenameModal, setShowRenameModal] = useState(false);
-
 
   const navigation = useNavigation<NavProp>();
   const [filterTags, setFilterTags] = useState<string[]>([]);
@@ -40,69 +57,77 @@ export default function GalleryScreen() {
   const [tempTags, setTempTags] = useState<string[]>([]);
   const [showTagModal, setShowTagModal] = useState(false);
 
-
-  // LOAD HUNT FOLDERS
   const loadHuntFolders = async () => {
     try {
       const user = auth.currentUser;
       if (!user) return;
 
       const baseRef = collection(db, `users/${user.uid}/hunts`);
-      const huntsRef = filterTags.length > 0
-        ? query(baseRef, where('tags', 'array-contains-any', filterTags))
-        : baseRef;
+      const huntsRef =
+        filterTags.length > 0
+          ? query(baseRef, where('tags', 'array-contains-any', filterTags))
+          : baseRef;
 
       const snapshot = await getDocs(huntsRef);
+      const firestoreFolders = snapshot.docs.map((doc) => doc.data().folderName);
 
-      const firestoreFolders = snapshot.docs.map(doc => doc.data().folderName);
-
-      const localItems = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
-      const huntFolders = localItems.filter(name =>
-        firestoreFolders.includes(name) &&
-        name.startsWith('hunt_') && !name.endsWith('.jpg')
+      const localItems = await FileSystem.readDirectoryAsync(
+        FileSystem.documentDirectory || ''
       );
-      let filteredHuntFolders = await Promise.all(huntFolders.map(async folder => {
-        const folderUri = FileSystem.documentDirectory + folder + '/';
-        try {
-          const metadataStr = await FileSystem.readAsStringAsync(folderUri + 'metadata.json');
-          const metadata = JSON.parse(metadataStr);
-          const tags = metadata.tags || [];
-          const hasMatch = filterTags.length === 0 || tags.some((tag: string) => filterTags.includes(tag))
-          return hasMatch ? folder : null;
-        } catch {
-          return null;
-        }
-      }));
+      const huntFolders = localItems.filter(
+        (name) =>
+          firestoreFolders.includes(name) &&
+          name.startsWith('hunt_') &&
+          !name.endsWith('.jpg')
+      );
 
-      const validFolders = filteredHuntFolders.filter(Boolean) as string[];
+      await Promise.all(
+        huntFolders.map(async (folder) => {
+          const folderUri = FileSystem.documentDirectory + folder + '/';
+          try {
+            const metadataStr = await FileSystem.readAsStringAsync(
+              folderUri + 'metadata.json'
+            );
+            const metadata = JSON.parse(metadataStr);
+            const tags = metadata.tags || [];
+            const hasMatch =
+              filterTags.length === 0 || tags.some((tag: string) => filterTags.includes(tag));
+            return hasMatch ? folder : null;
+          } catch {
+            return null;
+          }
+        })
+      );
 
-      const huntData = await Promise.all(huntFolders.map(async folder => {
-        const folderUri = FileSystem.documentDirectory + folder + '/';
-        const files = await FileSystem.readDirectoryAsync(folderUri);
-        const imageFiles = files.filter(f => f.endsWith('.jpg'));
+      const huntData = await Promise.all(
+        huntFolders.map(async (folder) => {
+          const folderUri = FileSystem.documentDirectory + folder + '/';
+          const files = await FileSystem.readDirectoryAsync(folderUri);
+          const imageFiles = files.filter((f) => f.endsWith('.jpg'));
 
-        let title = "Untitled Hunt";
-        let tags: string[] = [];
-        try {
-          const metadata = await FileSystem.readAsStringAsync(folderUri + 'metadata.json');
-          const parsed = JSON.parse(metadata);
-          title = parsed.title || title;
-          tags = parsed.tags || [];
-        } catch (err) {
-          console.warn(`No title found for ${folder}`);
-        }
+          let title = 'Untitled Hunt';
+          let tags: string[] = [];
+          try {
+            const metadata = await FileSystem.readAsStringAsync(folderUri + 'metadata.json');
+            const parsed = JSON.parse(metadata);
+            title = parsed.title || title;
+            tags = parsed.tags || [];
+          } catch (err) {
+            console.warn(`No title found for ${folder}`);
+          }
 
-        return {
-          folder,
-          previewUri: folderUri + imageFiles[0],
-          photoCount: imageFiles.length,
-          date: new Date(Number(folder.split('_')[1])).toLocaleDateString(),
-          title,
-          tags,
-        };
-      }));
+          return {
+            folder,
+            previewUri: folderUri + imageFiles[0],
+            photoCount: imageFiles.length,
+            date: new Date(Number(folder.split('_')[1])).toLocaleDateString(),
+            title,
+            tags,
+          };
+        })
+      );
 
-      setHuntFolders(huntData.reverse()); // newest first
+      setHuntFolders(huntData.reverse());
     } catch (error) {
       console.error('Failed to load hunts:', error);
     }
@@ -112,55 +137,48 @@ export default function GalleryScreen() {
     loadHuntFolders();
   }, [filterTags]);
 
-  // HANDLE: RENAME FOLDER
   const handleRename = (folder: string) => {
     setRenamingFolder(folder);
     setShowRenameModal(true);
     setRenameInput('');
   };
 
-  // HANDLE: DELETE FOLDER
   const handleDelete = async (folder: string) => {
-    Alert.alert(
-      "Delete Hunt",
-      "Are you sure you want to delete this item?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const folderUri = FileSystem.documentDirectory + folder + '/';
-              await FileSystem.deleteAsync(folderUri, { idempotent: true });
+    Alert.alert('Delete Hunt', 'Are you sure you want to delete this item?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const folderUri = FileSystem.documentDirectory + folder + '/';
+            await FileSystem.deleteAsync(folderUri, { idempotent: true });
 
-              const user = auth.currentUser;
-              if (user) {
-                const huntsRef = collection(db, `users/${user.uid}/hunts`);
-                const snapshot = await getDocs(huntsRef);
+            const user = auth.currentUser;
+            if (user) {
+              const huntsRef = collection(db, `users/${user.uid}/hunts`);
+              const snapshot = await getDocs(huntsRef);
 
-                for (const huntDoc of snapshot.docs) {
-                  const data = huntDoc.data();
-                  if (data.folderName === folder) {
-                    await deleteDoc(doc(db, `users/${user.uid}/hunts`, huntDoc.id));
-                    console.log('🗑️ Deleted Firestore hunt entry:', huntDoc.id);
-                    break;
-                  }
+              for (const huntDoc of snapshot.docs) {
+                const data = huntDoc.data();
+                if (data.folderName === folder) {
+                  await deleteDoc(doc(db, `users/${user.uid}/hunts`, huntDoc.id));
+                  console.log('🗑️ Deleted Firestore hunt entry:', huntDoc.id);
+                  break;
                 }
               }
-
-              loadHuntFolders();
-            } catch (err) {
-              console.error("Failed to delete folder:", err);
-              Alert.alert("Error", "Could not delete the folder.");
             }
+
+            loadHuntFolders();
+          } catch (err) {
+            console.error('Failed to delete folder:', err);
+            Alert.alert('Error', 'Could not delete the folder.');
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
 
-  // UI
   return (
     <ImageBackground
       source={require('../../assets/background_image.png')}
@@ -170,11 +188,7 @@ export default function GalleryScreen() {
 
       <ScrollView contentContainerStyle={styles.container}>
         <View style={{ width: '90%', marginTop: 50, marginBottom: -60 }}>
-          <TagInput
-            tags={filterTags}
-            setTags={setFilterTags}
-            placeholder="Filter by tags…"
-          />
+          <TagInput tags={filterTags} setTags={setFilterTags} placeholder="Filter by tags…" />
         </View>
 
         <View style={{ marginBottom: 20 }}>
@@ -192,7 +206,7 @@ export default function GalleryScreen() {
             >
               <View style={{ padding: 10 }}>
                 <Text style={styles.huntTitle}>{hunt.title}</Text>
-                {(hunt.tags && hunt.tags.length > 0) && (
+                {hunt.tags && hunt.tags.length > 0 && (
                   <View style={styles.tagFooter}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       {(hunt.tags ?? []).map((tag, i) => (
@@ -204,31 +218,51 @@ export default function GalleryScreen() {
                   </View>
                 )}
               </View>
+
               <Image source={{ uri: hunt.previewUri }} style={styles.image} />
+
               <View style={styles.infoPanel}>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
                   <TouchableOpacity onPress={() => handleRename(hunt.folder)}>
-                    <Text style={[styles.imageLabel, { textDecorationLine: 'underline' }]}>Rename </Text>
+                    <Text
+                      style={[styles.imageLabel, { textDecorationLine: 'underline' }]}
+                    >
+                      Rename{' '}
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDelete(hunt.folder)}>
-                    <Text style={[styles.imageLabel, { textDecorationLine: 'underline', color: '#ff4444' }]}>Delete </Text>
+                    <Text
+                      style={[
+                        styles.imageLabel,
+                        { textDecorationLine: 'underline', color: '#ff4444' },
+                      ]}
+                    >
+                      Delete{' '}
+                    </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => {
-                    setEditingTagsFolder(hunt.folder);
-                    setTempTags(hunt.tags || []);
-                    setShowTagModal(true);
-                  }}>
-                    <Text style={[styles.imageLabel, { textDecorationLine: 'underline', color: '#00d9ff' }]}>Tags </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEditingTagsFolder(hunt.folder);
+                      setTempTags(hunt.tags || []);
+                      setShowTagModal(true);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.imageLabel,
+                        { textDecorationLine: 'underline', color: '#00d9ff' },
+                      ]}
+                    >
+                      Tags{' '}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
             </TouchableOpacity>
           ))
         )}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Feather name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>
       </ScrollView>
@@ -255,38 +289,62 @@ export default function GalleryScreen() {
               placeholderTextColor="#aaa"
             />
             <View style={styles.modalButtons}>
-              <Button title="Cancel" onPress={() => {
-                setShowRenameModal(false);
-                setRenameInput('');
-                setRenamingFolder(null);
-              }} />
-              <Button title="Save" onPress={async () => {
-                if (renamingFolder && renameInput.trim()) {
-                  const folderUri = FileSystem.documentDirectory + renamingFolder + '/';
-                  await FileSystem.writeAsStringAsync(folderUri + 'metadata.json', JSON.stringify({ title: renameInput.trim() }));
+              <BSButton
+                variant="ghost"
+                label="Cancel"
+                onPress={() => {
                   setShowRenameModal(false);
-                  setRenamingFolder(null);
                   setRenameInput('');
-                  loadHuntFolders();
-                }
-              }} />
+                  setRenamingFolder(null);
+                }}
+                style={{ flex: 1, marginRight: 8 }}
+              />
+              <BSButton
+                variant="primary"
+                label="Save"
+                onPress={async () => {
+                  if (renamingFolder && renameInput.trim()) {
+                    const folderUri = FileSystem.documentDirectory + renamingFolder + '/';
+                    await FileSystem.writeAsStringAsync(
+                      folderUri + 'metadata.json',
+                      JSON.stringify({ title: renameInput.trim() })
+                    );
+                    setShowRenameModal(false);
+                    setRenamingFolder(null);
+                    setRenameInput('');
+                    loadHuntFolders();
+                  }
+                }}
+                style={{ flex: 1, marginLeft: 8 }}
+              />
             </View>
           </View>
         </View>
       </Modal>
+
       {/* MODAL: Tags */}
-      <Modal visible={showTagModal} transparent animationType="fade" onRequestClose={() => {
-        setShowTagModal(false);
-        setEditingTagsFolder(null);
-        setTempTags([]);
-      }}>
+      <Modal
+        visible={showTagModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowTagModal(false);
+          setEditingTagsFolder(null);
+          setTempTags([]);
+        }}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Edit Tags</Text>
-            <TagInput tags={tempTags} setTags={setTempTags} placeholder="Add tags like '10-point' or 'morning'" />
+            <TagInput
+              tags={tempTags}
+              setTags={setTempTags}
+              placeholder="Add tags like '10-point' or 'morning'"
+            />
             <View style={styles.modalButtons}>
-              <Button
-                title="Done"
+              <BSButton
+                variant="primary"
+                label="Done"
                 onPress={async () => {
                   if (editingTagsFolder) {
                     const folderUri = FileSystem.documentDirectory + editingTagsFolder + '/';
@@ -295,11 +353,16 @@ export default function GalleryScreen() {
                     try {
                       const info = await FileSystem.getInfoAsync(folderUri + 'metadata.json');
                       if (info.exists) {
-                        const existing = JSON.parse(await FileSystem.readAsStringAsync(folderUri + 'metadata.json'));
+                        const existing = JSON.parse(
+                          await FileSystem.readAsStringAsync(folderUri + 'metadata.json')
+                        );
                         metadata = { ...existing, tags: tempTags };
                       }
-                    } catch { }
-                    await FileSystem.writeAsStringAsync(folderUri + 'metadata.json', JSON.stringify(metadata));
+                    } catch {}
+                    await FileSystem.writeAsStringAsync(
+                      folderUri + 'metadata.json',
+                      JSON.stringify(metadata)
+                    );
 
                     const user = auth.currentUser;
                     if (user) {
@@ -318,7 +381,7 @@ export default function GalleryScreen() {
                   setEditingTagsFolder(null);
                   setTempTags([]);
                 }}
-                color="#FFD700"
+                style={{ flex: 1 }}
               />
             </View>
           </View>
@@ -328,7 +391,6 @@ export default function GalleryScreen() {
   );
 }
 
-// STYLES
 const styles = StyleSheet.create({
   background: {
     flex: 1,
@@ -414,12 +476,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 6,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 10,
-    marginBottom: 10,
   },
   tagChip: {
     backgroundColor: '#FFD700',

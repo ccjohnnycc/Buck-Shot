@@ -10,6 +10,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { Keyboard } from 'react-native';
 import FloridaBoundariesSimplified from '../../json/FloridaBoundariesSimplified.json';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 
 
@@ -110,6 +112,17 @@ export default function MapScreen() {
       };
     }[];
   };
+
+  useFocusEffect(
+  useCallback(() => {
+    setFabOpen(false);
+    setShowHelpModal(false);
+    setShowTitleModal(false);
+    setActivePin(null);
+    setSuggestions([]);
+    return () => {}; 
+  }, [])
+);
 
   useEffect(() => {
     const checkTooltip = async () => {
