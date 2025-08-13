@@ -21,53 +21,53 @@ export default function OfflineMapsScreen() {
   const [descInput, setDescInput] = useState(''); 
   const [tagsInput, setTagsInput] = useState('');
 
-  const loadImages = async () => {
-    try {
-      const folderUri = FileSystem.documentDirectory + 'offline_maps/';
-      const dirInfo = await FileSystem.getInfoAsync(folderUri);
+const loadImages = async () => {
+  try {
+    const folderUri = FileSystem.documentDirectory + 'offline_maps/';
+    const dirInfo = await FileSystem.getInfoAsync(folderUri);
 
-      if (!dirInfo.exists) {
-        setImages([]);
-        setMetas({});
-        return;
-      }
-
-      const files = await FileSystem.readDirectoryAsync(folderUri);
-      const jpgs = files.filter(file => file.endsWith('.jpg')).map(f => folderUri + f);
-      const newestFirst = jpgs.sort((a, b) => {
-        const aTime = parseInt(a.match(/(\d+)/)?.[0] || '0', 10);
-        const bTime = parseInt(b.match(/(\d+)/)?.[0] || '0', 10);
-        return bTime - aTime; 
-      });
-      setImages(newestFirst);
-
-      
-      requestAnimationFrame(() => {
-        flatRef.current?.scrollToOffset({ offset: 0, animated: false });
-      });
-
-
-      const metaEntries: [string, Meta][] = [];
-      for (const jpg of newestFirst) {
-        try {
-          const mp = metaPath(jpg);
-          const info = await FileSystem.getInfoAsync(mp);
-          if (info.exists) {
-            const raw = await FileSystem.readAsStringAsync(mp);
-            metaEntries.push([jpg, JSON.parse(raw)]);
-          }
-        } catch {}
-      }
-      setMetas(Object.fromEntries(metaEntries));
-
-
-      requestAnimationFrame(() => {
-        flatRef.current?.scrollToOffset({ offset: 0, animated: false });
-      });
-    } catch (err) {
-      console.error('Failed to load offline maps:', err);
+    if (!dirInfo.exists) {
+      setImages([]);
+      setMetas({});
+      return;
     }
-  };
+
+    const files = await FileSystem.readDirectoryAsync(folderUri);
+    const jpgs = files.filter(file => file.endsWith('.jpg')).map(f => folderUri + f);
+    const newestFirst = jpgs.sort((a, b) => {
+      const aTime = parseInt(a.match(/(\d+)/)?.[0] || '0', 10);
+      const bTime = parseInt(b.match(/(\d+)/)?.[0] || '0', 10);
+      return bTime - aTime;
+    });
+    setImages(newestFirst);
+
+    const metaEntries: [string, Meta][] = [];
+    for (const jpg of newestFirst) {
+      try {
+        const mp = metaPath(jpg);
+        const info = await FileSystem.getInfoAsync(mp);
+        if (info.exists) {
+          const raw = await FileSystem.readAsStringAsync(mp);
+          try {
+            metaEntries.push([jpg, JSON.parse(raw)]);
+          } catch {
+            console.warn(`Meta file for ${jpg} is corrupted, skipping.`);
+          }
+        }
+      } catch {
+        console.warn(`Failed to read meta for ${jpg}`);
+      }
+    }
+    setMetas(Object.fromEntries(metaEntries));
+
+    requestAnimationFrame(() => {
+      flatRef.current?.scrollToOffset({ offset: 0, animated: false });
+    });
+  } catch (err) {
+    console.error('Failed to load offline maps:', err);
+    Alert.alert('Error', 'Could not load offline maps.');
+  }
+};
 
   const deleteImage = async (uri: string) => {
     try {
@@ -102,39 +102,45 @@ export default function OfflineMapsScreen() {
   };
 
   const renderItem = ({ item }: { item: string }) => {
-    const m = metas[item];
-    return (
-      <TouchableOpacity
-        onPress={() => setViewerUri(item)} 
-        onLongPress={() =>
-          Alert.alert('Delete Map', 'Are you sure you want to delete this item?', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: () => deleteImage(item) },
-          ])
-        }
-        style={styles.card} 
-      >
-        <Image source={{ uri: item }} style={styles.image} resizeMode="cover" />
-        {(m?.description || (m?.tags && m.tags.length > 0)) && ( 
-          <View style={styles.metaBar}>
-            {m.description ? <Text style={styles.metaText}>{m.description}</Text> : null}
-            {m.tags && m.tags.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {m.tags.map((t, i) => (
-                  <View key={i} style={styles.tagChip}>
-                    <Text style={styles.tagText}>{t}</Text>
-                  </View>
-                ))}
-              </ScrollView>
-            ) : null}
-          </View>
-        )}
-        <TouchableOpacity style={styles.editPill} onPress={() => openEdit(item)}>
-          <Text style={styles.editPillText}>Edit</Text>
-        </TouchableOpacity>
+  const m = metas[item];
+  return (
+    <TouchableOpacity
+      onPress={() => item && setViewerUri(item)}
+      onLongPress={() =>
+        Alert.alert('Delete Map', 'Are you sure you want to delete this item?', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: () => deleteImage(item) },
+        ])
+      }
+      style={styles.card}
+    >
+      <Image
+        source={{ uri: item }}
+        style={styles.image}
+        resizeMode="cover"
+        onError={() => console.warn(`Image failed to load: ${item}`)}
+      />
+      {(m?.description || (m?.tags && m.tags.length > 0)) && (
+        <View style={styles.metaBar}>
+          {m.description ? <Text style={styles.metaText}>{m.description}</Text> : null}
+          {m.tags && m.tags.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {m.tags.map((t, i) => (
+                <View key={i} style={styles.tagChip}>
+                  <Text style={styles.tagText}>{t}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          ) : null}
+        </View>
+      )}
+      <TouchableOpacity style={styles.editPill} onPress={() => openEdit(item)}>
+        <Text style={styles.editPillText}>Edit</Text>
       </TouchableOpacity>
-    );
-  };
+    </TouchableOpacity>
+  );
+};
+
 
   return (
     <View style={styles.container}>

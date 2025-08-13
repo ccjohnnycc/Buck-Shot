@@ -102,32 +102,40 @@ export default function GalleryScreen() {
       const huntData = await Promise.all(
         huntFolders.map(async (folder) => {
           const folderUri = FileSystem.documentDirectory + folder + '/';
-          const files = await FileSystem.readDirectoryAsync(folderUri);
-          const imageFiles = files.filter((f) => f.endsWith('.jpg'));
-
+          let imageFiles: string[] = [];
           let title = 'Untitled Hunt';
           let tags: string[] = [];
+
+          try {
+            const files = await FileSystem.readDirectoryAsync(folderUri);
+            imageFiles = files.filter((f) => f.endsWith('.jpg'));
+          } catch {
+            console.warn(`Failed to read files for folder: ${folder}`);
+          }
+
           try {
             const metadata = await FileSystem.readAsStringAsync(folderUri + 'metadata.json');
             const parsed = JSON.parse(metadata);
             title = parsed.title || title;
             tags = parsed.tags || [];
-          } catch (err) {
-            console.warn(`No title found for ${folder}`);
+          } catch {
+            console.warn(`No or bad metadata for folder: ${folder}`);
           }
 
           return {
             folder,
-            previewUri: folderUri + imageFiles[0],
+            previewUri: imageFiles.length
+              ? folderUri + imageFiles[0]
+              : null, // null instead of crashing
             photoCount: imageFiles.length,
-            date: new Date(Number(folder.split('_')[1])).toLocaleDateString(),
+            date: new Date(Number(folder.split('_')[1]) || Date.now()).toLocaleDateString(),
             title,
             tags,
           };
         })
       );
 
-      setHuntFolders(huntData.reverse());
+      setHuntFolders(huntData.filter(Boolean).reverse());
     } catch (error) {
       console.error('Failed to load hunts:', error);
     }
@@ -138,6 +146,10 @@ export default function GalleryScreen() {
   }, [filterTags]);
 
   const handleRename = (folder: string) => {
+    if (!renameInput.trim()) {
+      Alert.alert('Invalid Name', 'Please enter a valid hunt name.');
+      return;
+    }
     setRenamingFolder(folder);
     setShowRenameModal(true);
     setRenameInput('');
@@ -219,7 +231,13 @@ export default function GalleryScreen() {
                 )}
               </View>
 
-              <Image source={{ uri: hunt.previewUri }} style={styles.image} />
+              <Image
+                source={
+                  hunt.previewUri
+                    ? { uri: hunt.previewUri }
+                    : { uri: 'https://via.placeholder.com/300x200?text=No+Image' }
+                }
+              />
 
               <View style={styles.infoPanel}>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -358,7 +376,7 @@ export default function GalleryScreen() {
                         );
                         metadata = { ...existing, tags: tempTags };
                       }
-                    } catch {}
+                    } catch { }
                     await FileSystem.writeAsStringAsync(
                       folderUri + 'metadata.json',
                       JSON.stringify(metadata)

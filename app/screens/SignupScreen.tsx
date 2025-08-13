@@ -8,11 +8,12 @@ import {
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../services/firebaseconfig';
+import { createUserWithEmailAndPassword, getAuth, updateProfile } from 'firebase/auth';
+import { app, auth, db } from '../services/firebaseconfig';
 import { doc, setDoc } from 'firebase/firestore';
 import { AuthBackground } from './AuthBackground';
 import BSButton from '../components/BSButton';
+import { Alert } from 'react-native';
 
 type RootStackParamList = {
   Main: undefined;
@@ -26,30 +27,38 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSignup = async () => {
-    if (!name || !email || !password) {
-      setError('Please fill out all fields');
-      return;
+const handleSignup = async () => {
+  if (!email || !password) {
+    Alert.alert('Missing Info', 'Please enter both email and password.');
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const auth = getAuth(app);
+    const userCred = await createUserWithEmailAndPassword(auth, email, password);
+
+    if (name) {
+      await updateProfile(userCred.user, { displayName: name });
     }
-    setLoading(true);
-    setError(null);
-    try {
-      const userCred = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCred.user;
-      // store profile in Firestore
-      await setDoc(doc(db, 'users', user.uid), {
-        name,
-        email,
-        createdAt: new Date().toISOString(),
-      });
-      await AsyncStorage.setItem('userEmail', user.email || '');
-      navigation.navigate('Main');
-    } catch (err: any) {
-      setError(err.message || 'Signup failed');
-    } finally {
-      setLoading(false);
+
+    Alert.alert('Account Created', 'Your account was successfully created!');
+    navigation.navigate('Main');
+  } catch (err: any) {
+    console.error('Signup error:', err);
+    let message = 'An unexpected error occurred. Please try again.';
+    if (err.code === 'auth/email-already-in-use') {
+      message = 'That email is already in use.';
+    } else if (err.code === 'auth/invalid-email') {
+      message = 'Invalid email address.';
+    } else if (err.code === 'auth/weak-password') {
+      message = 'Password should be at least 6 characters.';
     }
-  };
+    Alert.alert('Signup Failed', message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <KeyboardAvoidingView

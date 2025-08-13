@@ -13,16 +13,33 @@ export default function PhotoViewerScreen() {
   const [index, setIndex] = useState(startIndex);
 
   useEffect(() => {
+    if (!folderName) {
+      Alert.alert('No Folder', 'Could not open photos for this item.');
+      navigation.goBack();
+      return;
+    }
+
     const loadPhotos = async () => {
-      const folderUri = FileSystem.documentDirectory + folderName + '/';
-      const files = await FileSystem.readDirectoryAsync(folderUri);
-      const jpgs = files.filter(f => f.endsWith('.jpg')).map(f => folderUri + f);
-      setPhotos(jpgs);
+      try {
+        const folderUri = FileSystem.documentDirectory + folderName + '/';
+        const files = await FileSystem.readDirectoryAsync(folderUri);
+        const jpgs = files.filter(f => f.endsWith('.jpg')).map(f => folderUri + f);
+        if (jpgs.length === 0) {
+          Alert.alert('No Photos', 'This folder is empty.');
+          navigation.goBack();
+          return;
+        }
+        setPhotos(jpgs);
+      } catch (err) {
+        Alert.alert('Error', 'Failed to load photos for this folder.');
+        navigation.goBack();
+      }
     };
     loadPhotos();
   }, [folderName]);
 
   if (!photos.length) return null;
+
 
   return (
     <View style={styles.container}>

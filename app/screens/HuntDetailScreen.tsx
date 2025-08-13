@@ -33,26 +33,52 @@ export default function DeerHarvestLogScreen() {
   const [confirmationNumber, setConfirmationNumber] = useState('');
   const navigation = useNavigation<NavProp>();
   const [showPicker, setShowPicker] = useState(false);
+  const [saving, setSaving] = useState(false);
+
 
   const handleSubmit = async () => {
+    if (saving) return;
+
     const auth = getAuth(app);
     const db = getFirestore(app);
     const user = auth.currentUser;
+    if (!user) {
+      Alert.alert('Not logged in');
+      return;
+    }
 
-    if (!user) return Alert.alert('Not logged in');
+    if (!countyOrWMA.trim()) {
+      Alert.alert('Missing Location', 'Please enter the county or WMA.');
+      return;
+    }
+
+    if (!confirmationNumber.trim()) {
+      Alert.alert('Missing Confirmation #', 'Please enter the confirmation number.');
+      return;
+    }
+
+    let pointsNum: number | null = null;
+    if (antlered) {
+      pointsNum = Number(antlerPoints);
+      if (isNaN(pointsNum) || pointsNum <= 0) {
+        Alert.alert('Invalid Points', 'Please enter a valid number of antler points.');
+        return;
+      }
+    }
 
     const data = {
       species: 'Deer',
       antlered,
       sex,
       harvestDate: harvestDate.toISOString(),
-      antlerPoints: antlered ? Number(antlerPoints) : null,
-      tagNumber: tagNumber || null,
-      countyOrWMA,
-      confirmationNumber,
+      antlerPoints: antlered ? pointsNum : null,
+      tagNumber: tagNumber.trim() || null,
+      countyOrWMA: countyOrWMA.trim(),
+      confirmationNumber: confirmationNumber.trim(),
       timestamp: serverTimestamp(),
     };
 
+    setSaving(true);
     try {
       await addDoc(collection(db, `users/${user.uid}/harvestReports`), data);
       Alert.alert('Saved', 'Deer harvest log saved.');
@@ -60,9 +86,11 @@ export default function DeerHarvestLogScreen() {
       setTagNumber('');
       setCountyOrWMA('');
       setConfirmationNumber('');
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Could not save report.');
+    } catch (err: any) {
+      console.error('Error saving harvest log:', err?.message || err);
+      Alert.alert('Error', 'Could not save report. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -178,6 +206,7 @@ export default function DeerHarvestLogScreen() {
           <BSButton
             label="Save Deer Report"
             onPress={handleSubmit}
+            loading={saving}
             style={{ marginTop: 24 }}
           />
 

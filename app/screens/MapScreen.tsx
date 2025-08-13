@@ -12,6 +12,7 @@ import { Keyboard } from 'react-native';
 import FloridaBoundariesSimplified from '../../json/FloridaBoundariesSimplified.json';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
+import NetInfo from '@react-native-community/netinfo';
 
 
 
@@ -114,15 +115,15 @@ export default function MapScreen() {
   };
 
   useFocusEffect(
-  useCallback(() => {
-    setFabOpen(false);
-    setShowHelpModal(false);
-    setShowTitleModal(false);
-    setActivePin(null);
-    setSuggestions([]);
-    return () => {}; 
-  }, [])
-);
+    useCallback(() => {
+      setFabOpen(false);
+      setShowHelpModal(false);
+      setShowTitleModal(false);
+      setActivePin(null);
+      setSuggestions([]);
+      return () => { };
+    }, [])
+  );
 
   useEffect(() => {
     const checkTooltip = async () => {
@@ -134,43 +135,43 @@ export default function MapScreen() {
 
 
 
- useEffect(() => {
-  const parsed = (FloridaBoundariesSimplified as GeoJson).features.flatMap((feature, index) => {
-    if (!feature.geometry) return [];
+  useEffect(() => {
+    const parsed = (FloridaBoundariesSimplified as GeoJson).features.flatMap((feature, index) => {
+      if (!feature.geometry) return [];
 
-    const { type, coordinates } = feature.geometry;
+      const { type, coordinates } = feature.geometry;
 
-    if (type === 'Polygon') {
-      return [{
-        id: `polygon-${index}`,
-        coords: coordinates[0]
-          .slice(0, 200) // LIMIT complexity
-          .map(([lng, lat]: [number, number]) => ({
-            latitude: lat,
-            longitude: lng,
-          })),
-      }];
-    }
+      if (type === 'Polygon') {
+        return [{
+          id: `polygon-${index}`,
+          coords: coordinates[0]
+            .slice(0, 200) // LIMIT complexity
+            .map(([lng, lat]: [number, number]) => ({
+              latitude: lat,
+              longitude: lng,
+            })),
+        }];
+      }
 
-    if (type === 'MultiPolygon') {
-      return coordinates.flatMap((poly: [number, number][][], polyIndex: number) => ({
-        id: `multipolygon-${index}-${polyIndex}`,
-        coords: poly[0]
-          .filter(([lng, lat]) => lng && lat)
-          .slice(0, 200)
-          .map(([lng, lat]) => ({
-            latitude: lat,
-            longitude: lng,
-          }))
-      }));
-    }
+      if (type === 'MultiPolygon') {
+        return coordinates.flatMap((poly: [number, number][][], polyIndex: number) => ({
+          id: `multipolygon-${index}-${polyIndex}`,
+          coords: poly[0]
+            .filter(([lng, lat]) => lng && lat)
+            .slice(0, 200)
+            .map(([lng, lat]) => ({
+              latitude: lat,
+              longitude: lng,
+            }))
+        }));
+      }
 
-    return [];
-  });
+      return [];
+    });
 
-  setParsedPolygons(parsed); 
-  console.log('Parsed polygons loaded:', parsed.length);
-}, []);
+    setParsedPolygons(parsed);
+    console.log('Parsed polygons loaded:', parsed.length);
+  }, []);
 
   const saveMapSnapshot = async () => {
     if (!mapRef.current || savingDisabled) return;
@@ -231,22 +232,33 @@ export default function MapScreen() {
       setIsScreenLoading(false);
       return;
     }
-    let location = await Location.getCurrentPositionAsync({});
-    const userRegion = {
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-      latitudeDelta: 0.04,
-      longitudeDelta: 0.04,
-    };
-    setRegion(userRegion);
-    setMarker(null);
-    mapRef.current?.animateToRegion(userRegion, 1000);
-    setIsScreenLoading(false);
+    try {
+      let location = await Location.getCurrentPositionAsync({});
+      const userRegion = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.04,
+        longitudeDelta: 0.04,
+      };
+      setRegion(userRegion);
+      setMarker(null);
+      mapRef.current?.animateToRegion(userRegion, 1000);
+    } catch {
+      Alert.alert('Error', 'Could not retrieve your location.');
+      setIsScreenLoading(false);
+    }
   };
 
   const handleSearch = async () => {
-    if (!search.trim()) return;
+    if (!search.trim() || isSearching) return;
     setIsSearching(true);
+
+    const net = await NetInfo.fetch();
+    if (!net.isConnected) {
+      setIsSearching(false);
+      Alert.alert('Offline', 'No internet connection. Try again when you’re online.');
+      return;
+    }
 
     setIsScreenLoading(true);
     setError('');
@@ -296,10 +308,13 @@ export default function MapScreen() {
       }
     } catch {
       setError('Search failed.');
+      Alert.alert('Error', 'Search failed. Please try again.');
+      setIsScreenLoading(false);
     }
 
     setIsScreenLoading(false);
     setSuggestions([]);
+    setIsSearching(false);
   };
 
   const filterPolygonsByRegion = (region: Region) => {
@@ -347,17 +362,21 @@ export default function MapScreen() {
         setIsScreenLoading(false);
         return;
       }
-      let location = await Location.getCurrentPositionAsync({});
-      const defaultRegion = {
-        latitude: 27.9944,
-        longitude: -81.7603,
-        latitudeDelta: 0.5,
-        longitudeDelta: 0.5,
-      };
+      try {
+        let location = await Location.getCurrentPositionAsync({});
+        const defaultRegion = {
+          latitude: 27.9944,
+          longitude: -81.7603,
+          latitudeDelta: 0.5,
+          longitudeDelta: 0.5,
+        };
 
-      setRegion(defaultRegion);
-      filterPolygonsByRegion(defaultRegion);
-      setIsScreenLoading(false);
+        setRegion(defaultRegion);
+        filterPolygonsByRegion(defaultRegion);
+        setIsScreenLoading(false);
+      } catch {
+        Alert.alert('Error', 'Could not retrieve your location.');
+      }
     })();
   }, []);
 
@@ -419,8 +438,8 @@ export default function MapScreen() {
                 Keyboard.dismiss();
               }}
             />
-            <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
-              <Text style={{ color: '#fff' }}>Search</Text>
+            <TouchableOpacity style={[styles.searchBtn, isSearching && { opacity: 0.5 }]} onPress={handleSearch} disabled={isSearching}>
+              <Text style={{ color: '#fff' }}>{isSearching ? 'Searching…' : 'Search'}</Text>
             </TouchableOpacity>
           </View>
 

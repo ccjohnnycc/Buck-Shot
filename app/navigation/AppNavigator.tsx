@@ -17,6 +17,7 @@ import PhotoViewerScreen from '../screens/PhotoViewerScreen';
 import OfflineMapsScreen from '../screens/OfflineMapsScreen';
 import DeerHarvestLogScreen from '../screens/HarvestLogScreen';
 import HarvestReportsScreen from '../screens/HarvestReportsScreen';
+import AppErrorBoundary from '../components/AppErrorBoundary';
 
 export type RootStackParamList = {
   Main: undefined;
@@ -54,6 +55,7 @@ const commonHeaderOptions: NativeStackNavigationOptions = {
 
 export default function AppNavigator() {
   return (
+    <AppErrorBoundary>
     <NavigationContainer>
       <Stack.Navigator
         id={undefined}
@@ -77,5 +79,6 @@ export default function AppNavigator() {
         <Stack.Screen name="HarvestReports" component={HarvestReportsScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
+    </AppErrorBoundary>
   );
 }

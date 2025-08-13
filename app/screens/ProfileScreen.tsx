@@ -137,6 +137,7 @@ const ProfileScreen = () => {
     });
   }, []);
 
+
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
       <View style={styles.overlay} />
