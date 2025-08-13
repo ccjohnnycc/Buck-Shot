@@ -32,7 +32,11 @@ export type RootStackParamList = {
   JournalEntryForm: {
     entryId?: string;
     imageUri?: string;
-    measurement?: string;
+    measurement?: string | number;
+    measurementValue?: number;
+    measurementUnit?: 'in' | 'cm' | string; 
+    measurementLabel?: string;             
+
     coords?: { latitude: number; longitude: number };
     userName?: string;
   };
