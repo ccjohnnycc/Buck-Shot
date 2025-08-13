@@ -182,17 +182,18 @@ export default function MeasureScreen({ navigation }: any) {
   const handleConfirmSave = async () => {
     if (hasSaved) return;
     setHasSaved(true);
+
     try {
       const folder = await ensureFolder();
       const folderUri = FileSystem.documentDirectory + folder + '/';
+
       let rawUri: string | null = null;
       let uxSnapshotUri: string | null = null;
 
-      // Save raw photo if selected
+      // Save RAW
       if (saveRaw && capturedUri) {
         const files = await FileSystem.readDirectoryAsync(folderUri);
-        const rawIndex = files.length + 1;
-        const dest = `${folderUri}${rawIndex}.jpg`;
+        const dest = `${folderUri}${files.length + 1}.jpg`;
         try {
           await FileSystem.moveAsync({ from: capturedUri, to: dest });
         } catch {
@@ -201,13 +202,12 @@ export default function MeasureScreen({ navigation }: any) {
         rawUri = dest;
       }
 
-      // Save annotated photo if selected
+      // Save annotated
       if (saveUX && capturedUri) {
         const target = findNodeHandle(containerRef.current)!;
         const snapshot = await captureRef(target, { format: 'jpg', quality: 1 });
         const files2 = await FileSystem.readDirectoryAsync(folderUri);
-        const uxIndex = files2.length + 1;
-        const dest2 = `${folderUri}${uxIndex}.jpg`;
+        const dest2 = `${folderUri}${files2.length + 1}.jpg`;
         try {
           await FileSystem.moveAsync({ from: snapshot, to: dest2 });
         } catch {
@@ -216,40 +216,59 @@ export default function MeasureScreen({ navigation }: any) {
         uxSnapshotUri = dest2;
       }
 
-      // If “Create Journal Entry” is toggled, navigate
-      if (saveJournal) {
-        let coords = null;
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const { coords: c } = await Location.getCurrentPositionAsync({});
-          coords = { latitude: c.latitude, longitude: c.longitude };
-        }
-        const measurementValue = parseFloat(inches.toFixed(2)); // number
-        const measurementUnit = 'in';                           // inches
-        const measurementLabel = `${measurementValue} ${measurementUnit}`;
+      // Always push the folder metadata to Firestore so Gallery shows it
+      try {
+        await uploadTestHunt();
+      } catch (e) {
+        console.warn('uploadTestHunt failed (non-blocking):', e);
+      }
 
-        // Get userName from auth.currentUser or set a default value
-        const userName = auth.currentUser?.displayName || auth.currentUser?.email || 'Unknown User';
+      // If user chose to create a journal entry, go there next
+      if (saveJournal) {
+        // IMPORTANT: close modal first so it doesn't re-appear when we come back
+        setModalVisible(false);
+
+        // Prefer annotated image if present; else raw; else null
+        const imgForJournal = uxSnapshotUri || rawUri || null;
+
+        // Build measurement payload (you already have `inches`)
+        const val = Number(inches.toFixed(2));
+        const label = `${val} in`;
+
+        // Optionally get coords (non-fatal)
+        let coordsPayload: any = null;
+        try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const { coords } = await Location.getCurrentPositionAsync({});
+            coordsPayload = { latitude: coords.latitude, longitude: coords.longitude };
+          }
+        } catch { }
+
         navigation.navigate('JournalEntryForm', {
-          imageUri: saveUX ? uxSnapshotUri : rawUri,
-          measurementValue,
-          measurementUnit,
-          measurementLabel,
-          coords,
-          userName,
+          imageUri: imgForJournal || undefined,
+          measurementValue: val,
+          measurementUnit: 'in',
+          measurementLabel: label,
+          coords: coordsPayload || undefined,
+          userName: auth.currentUser?.displayName ?? auth.currentUser?.email ?? 'Unknown',
         });
+
+        // Let the focus listener reset the screen when we come back
         return;
       }
 
+      // No journal flow → finish here
       Alert.alert('Saved', 'Your photo has been saved to the hunt.');
-      await uploadTestHunt();
       setModalVisible(false);
       clearAll();
     } catch (err) {
       console.error('Save error:', err);
       Alert.alert('Failed to save photo');
+      setModalVisible(false);
     }
   };
+
 
   return (
     <View style={styles.container}>
