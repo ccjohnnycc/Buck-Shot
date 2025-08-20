@@ -16,10 +16,12 @@ import MainTabs from './MainTabs';
 import PhotoViewerScreen from '../screens/PhotoViewerScreen';
 import OfflineMapsScreen from '../screens/OfflineMapsScreen';
 import DeerHarvestLogScreen from '../screens/HarvestLogScreen';
+import HarvestListScreen from '../screens/HarvestListScreen';
 
 export type RootStackParamList = {
   Main: undefined;
-  DeerHarvestLog: undefined;
+  DeerHarvestLog: { harvestId?: string } | undefined;
+  HarvestList: { filterTags?: string[] } | undefined;
   Profile: undefined;
   Measure: undefined;
   Login: undefined;
@@ -72,6 +74,7 @@ export default function AppNavigator() {
         <Stack.Screen name="PhotoViewer" component={PhotoViewerScreen} />
         <Stack.Screen name="OfflineMaps" component={OfflineMapsScreen} options={{ headerShown: false }}/>
         <Stack.Screen name="DeerHarvestLog" component={DeerHarvestLogScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="HarvestList" component={HarvestListScreen} options={{ headerShown: false }} />
         {/*<Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Measure" component={MeasureScreen} options={{ headerShown: false }} />*/}
       </Stack.Navigator>
