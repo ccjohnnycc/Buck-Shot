@@ -184,6 +184,13 @@ const ProfileScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
+              style={styles.menuButton}
+              onPress={() => navigation.navigate('HarvestList')}
+            >
+              <Text style={styles.buttonText}>Harvests</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[styles.menuButton, { backgroundColor: '#2f95dc' }]}
               onPress={sendTestNotification}
             >
@@ -195,13 +202,6 @@ const ProfileScreen = () => {
               onPress={handleLogout}
             >
               <Text style={styles.buttonText}>Logout </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuButton}
-              onPress={() => navigation.navigate('DeerHarvestLog')}
-            >
-              <Text style={styles.buttonText}>Log a Deer Harvest </Text>
             </TouchableOpacity>
           </View>
 
