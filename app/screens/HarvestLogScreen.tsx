@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+} from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
@@ -20,14 +31,15 @@ export default function DeerHarvestLogScreen() {
   const [tagNumber, setTagNumber] = useState('');
   const [countyOrWMA, setCountyOrWMA] = useState('');
   const [confirmationNumber, setConfirmationNumber] = useState('');
-  const navigation = useNavigation<NavProp>();
   const [showPicker, setShowPicker] = useState(false);
 
+  const navigation = useNavigation<NavProp>();
+
+  // Save to Firestore under the current user
   const handleSubmit = async () => {
     const auth = getAuth(app);
     const db = getFirestore(app);
     const user = auth.currentUser;
-
     if (!user) return Alert.alert('Not logged in');
 
     const data = {
@@ -49,8 +61,7 @@ export default function DeerHarvestLogScreen() {
       setTagNumber('');
       setCountyOrWMA('');
       setConfirmationNumber('');
-    } catch (err) {
-      console.error(err);
+    } catch {
       Alert.alert('Error', 'Could not save report.');
     }
   };
@@ -68,20 +79,32 @@ export default function DeerHarvestLogScreen() {
         >
           <Text style={styles.label}>Antlered or Antlerless?</Text>
           <View style={styles.row}>
-            <TouchableOpacity onPress={() => setAntlered(true)} style={[styles.option, antlered && styles.selected]}>
+            <TouchableOpacity
+              onPress={() => setAntlered(true)}
+              style={[styles.option, antlered && styles.selected]}
+            >
               <Text>Antlered</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setAntlered(false)} style={[styles.option, !antlered && styles.selected]}>
+            <TouchableOpacity
+              onPress={() => setAntlered(false)}
+              style={[styles.option, !antlered && styles.selected]}
+            >
               <Text>Antlerless</Text>
             </TouchableOpacity>
           </View>
 
           <Text style={styles.label}>Sex:</Text>
           <View style={styles.row}>
-            <TouchableOpacity onPress={() => setSex('Male')} style={[styles.option, sex === 'Male' && styles.selected]}>
+            <TouchableOpacity
+              onPress={() => setSex('Male')}
+              style={[styles.option, sex === 'Male' && styles.selected]}
+            >
               <Text>Male</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setSex('Female')} style={[styles.option, sex === 'Female' && styles.selected]}>
+            <TouchableOpacity
+              onPress={() => setSex('Female')}
+              style={[styles.option, sex === 'Female' && styles.selected]}
+            >
               <Text>Female</Text>
             </TouchableOpacity>
           </View>
@@ -102,7 +125,10 @@ export default function DeerHarvestLogScreen() {
           )}
 
           <Text style={styles.label}>Harvest Date</Text>
-          <Pressable onPress={() => setShowPicker(true)} style={[styles.input, { justifyContent: 'center' }]}>
+          <Pressable
+            onPress={() => setShowPicker(true)}
+            style={[styles.input, { justifyContent: 'center' }]}
+          >
             <Text>{harvestDate.toDateString()}</Text>
           </Pressable>
 
@@ -148,10 +174,8 @@ export default function DeerHarvestLogScreen() {
             returnKeyType="done"
           />
 
-          {/* Save action standardized */}
           <BSButton label="Save Deer Report" onPress={handleSubmit} style={{ marginTop: 24 }} />
 
-          {/* Back arrow overlay left as-is */}
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Feather name="arrow-left" size={24} color="#fff" />
           </TouchableOpacity>
@@ -172,9 +196,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginRight: 10,
   },
-  selected: {
-    backgroundColor: '#FFD700',
-  },
+  selected: { backgroundColor: '#FFD700' },
   backButton: {
     position: 'absolute',
     top: 30,
@@ -184,12 +206,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     borderRadius: 20,
     zIndex: 10,
-  },
-  smallLabel: {
-    color: '#fff',
-    alignSelf: 'flex-start',
-    marginLeft: '5%',
-    marginBottom: 6,
-    fontWeight: '600',
   },
 });

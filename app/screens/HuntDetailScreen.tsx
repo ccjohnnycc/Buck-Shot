@@ -31,11 +31,12 @@ export default function DeerHarvestLogScreen() {
   const [tagNumber, setTagNumber] = useState('');
   const [countyOrWMA, setCountyOrWMA] = useState('');
   const [confirmationNumber, setConfirmationNumber] = useState('');
-  const navigation = useNavigation<NavProp>();
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const navigation = useNavigation<NavProp>();
 
+  // Save to Firestore (guarded by basic validation + saving state)
   const handleSubmit = async () => {
     if (saving) return;
 
@@ -51,7 +52,6 @@ export default function DeerHarvestLogScreen() {
       Alert.alert('Missing Location', 'Please enter the county or WMA.');
       return;
     }
-
     if (!confirmationNumber.trim()) {
       Alert.alert('Missing Confirmation #', 'Please enter the confirmation number.');
       return;
@@ -86,8 +86,7 @@ export default function DeerHarvestLogScreen() {
       setTagNumber('');
       setCountyOrWMA('');
       setConfirmationNumber('');
-    } catch (err: any) {
-      console.error('Error saving harvest log:', err?.message || err);
+    } catch {
       Alert.alert('Error', 'Could not save report. Please try again.');
     } finally {
       setSaving(false);
@@ -111,13 +110,13 @@ export default function DeerHarvestLogScreen() {
               onPress={() => setAntlered(true)}
               style={[styles.option, antlered && styles.selected]}
             >
-              <Text>Antlered </Text>
+              <Text>Antlered</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setAntlered(false)}
               style={[styles.option, !antlered && styles.selected]}
             >
-              <Text>Antlerless </Text>
+              <Text>Antlerless</Text>
             </TouchableOpacity>
           </View>
 
@@ -127,13 +126,13 @@ export default function DeerHarvestLogScreen() {
               onPress={() => setSex('Male')}
               style={[styles.option, sex === 'Male' && styles.selected]}
             >
-              <Text>Male </Text>
+              <Text>Male</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setSex('Female')}
               style={[styles.option, sex === 'Female' && styles.selected]}
             >
-              <Text>Female </Text>
+              <Text>Female</Text>
             </TouchableOpacity>
           </View>
 
@@ -157,7 +156,7 @@ export default function DeerHarvestLogScreen() {
             onPress={() => setShowPicker(true)}
             style={[styles.input, { justifyContent: 'center' }]}
           >
-            <Text>{harvestDate.toDateString()} </Text>
+            <Text>{harvestDate.toDateString()}</Text>
           </Pressable>
 
           {showPicker && (
@@ -202,7 +201,6 @@ export default function DeerHarvestLogScreen() {
             returnKeyType="done"
           />
 
-          {/* Standardized primary action */}
           <BSButton
             label="Save Deer Report"
             onPress={handleSubmit}
@@ -210,7 +208,6 @@ export default function DeerHarvestLogScreen() {
             style={{ marginTop: 24 }}
           />
 
-          {/* Back icon button can remain as-is */}
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Feather name="arrow-left" size={24} color="#fff" />
           </TouchableOpacity>
@@ -231,9 +228,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginRight: 10,
   },
-  selected: {
-    backgroundColor: '#FFD700',
-  },
+  selected: { backgroundColor: '#FFD700' },
   backButton: {
     position: 'absolute',
     top: 30,
@@ -243,12 +238,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     borderRadius: 20,
     zIndex: 10,
-  },
-  smallLabel: {
-    color: '#fff',
-    alignSelf: 'flex-start',
-    marginLeft: '5%',
-    marginBottom: 6,
-    fontWeight: '600',
   },
 });

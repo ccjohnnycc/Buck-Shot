@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert, RefreshControl, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { getAuth } from 'firebase/auth';
@@ -116,6 +116,9 @@ export default function HarvestReportsScreen() {
                     <Text style={styles.emptyText}>No harvest reports found.</Text>
                 }
             />
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                    <Feather name="arrow-left" size={24} color="#fff" />
+                  </TouchableOpacity>
         </View>
     );
 }
@@ -132,4 +135,15 @@ const styles = StyleSheet.create({
     },
     reportText: { color: '#fff' },
     emptyText: { color: '#aaa', textAlign: 'center', marginTop: 20 },
+    
+    backButton: {
+    position: 'absolute',
+    top: 30,
+    left: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 10,
+    zIndex: 10,
+  },
 });

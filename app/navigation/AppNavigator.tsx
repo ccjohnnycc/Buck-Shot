@@ -1,9 +1,6 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator, NativeStackNavigationOptions, } from '@react-navigation/native-stack';
-//import HomeScreen from '../screens/HomeScreen';
-import ProfileScreen from '../screens/ProfileScreen';
-import MeasureScreen from '../screens/MeasureScreen';
+import { createNativeStackNavigator,  NativeStackNavigationOptions, } from '@react-navigation/native-stack';
 import LoginScreen from '../screens/LoginScreen';
 import AuthScreen from '../screens/AuthScreen';
 import SignupScreen from '../screens/SignupScreen';
@@ -19,11 +16,12 @@ import DeerHarvestLogScreen from '../screens/HarvestLogScreen';
 import HarvestReportsScreen from '../screens/HarvestReportsScreen';
 import AppErrorBoundary from '../components/AppErrorBoundary';
 
+// Stack route params
 export type RootStackParamList = {
   Main: undefined;
   DeerHarvestLog: undefined;
-  Profile: undefined;
-  Measure: undefined;
+  Profile: undefined; 
+  Measure: undefined; 
   Login: undefined;
   Signup: undefined;
   AuthLanding: undefined;
@@ -45,7 +43,7 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-// Shared header styles
+// Shared transparent header
 const commonHeaderOptions: NativeStackNavigationOptions = {
   headerTransparent: true,
   headerStyle: { backgroundColor: 'transparent' },
@@ -56,29 +54,26 @@ const commonHeaderOptions: NativeStackNavigationOptions = {
 export default function AppNavigator() {
   return (
     <AppErrorBoundary>
-    <NavigationContainer>
-      <Stack.Navigator
-        id={undefined}
-        initialRouteName="AuthLanding"
-        screenOptions={commonHeaderOptions}>
-        {/*<Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />*/}
-        <Stack.Screen name="AuthLanding" component={AuthScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
-        <Stack.Screen name="Calibration" component={CalibrationScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Gallery" component={GalleryScreen} options={{headerShown: false}} />
-        <Stack.Screen name="HuntDetail" component={HuntDetailScreen} />
-        <Stack.Screen name="JournalList" component={JournalListScreen} options={{headerShown: false}} />
-        <Stack.Screen name="JournalEntryForm" component={JournalEntryForm} options={{headerShown: false}} />
-        <Stack.Screen name="PhotoViewer" component={PhotoViewerScreen} />
-        <Stack.Screen name="OfflineMaps" component={OfflineMapsScreen} options={{ headerShown: false }}/>
-        <Stack.Screen name="DeerHarvestLog" component={DeerHarvestLogScreen} options={{ headerShown: false }} />
-        {/*<Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Measure" component={MeasureScreen} options={{ headerShown: false }} />*/}
-        <Stack.Screen name="HarvestReports" component={HarvestReportsScreen} options={{ headerShown: false }} />
-      </Stack.Navigator>
-    </NavigationContainer>
+      <NavigationContainer>
+        <Stack.Navigator
+          id={undefined} 
+          initialRouteName="AuthLanding" 
+          screenOptions={commonHeaderOptions}>
+          <Stack.Screen name="AuthLanding" component={AuthScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+          <Stack.Screen name="Calibration" component={CalibrationScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Gallery" component={GalleryScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="HuntDetail" component={HuntDetailScreen} />
+          <Stack.Screen name="JournalList" component={JournalListScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="JournalEntryForm" component={JournalEntryForm} options={{ headerShown: false }} />
+          <Stack.Screen name="PhotoViewer" component={PhotoViewerScreen} />
+          <Stack.Screen name="OfflineMaps" component={OfflineMapsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="DeerHarvestLog" component={DeerHarvestLogScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="HarvestReports" component={HarvestReportsScreen} options={{ headerShown: false }} />
+        </Stack.Navigator>
+      </NavigationContainer>
     </AppErrorBoundary>
   );
 }

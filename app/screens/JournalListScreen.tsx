@@ -20,6 +20,7 @@ export default function JournalListScreen() {
   const [entries, setEntries] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Load entries (optionally filtered by tags)
   const fetchEntries = async () => {
     try {
       const user = auth.currentUser;
@@ -31,10 +32,9 @@ export default function JournalListScreen() {
         : baseRef;
 
       const snap = await getDocs(q);
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setEntries(data.reverse());
-    } catch (err) {
-      console.error('Failed to fetch entries', err);
+    } catch {
       Alert.alert('Error', 'Could not load journal entries.');
     }
   };
@@ -52,9 +52,8 @@ export default function JournalListScreen() {
   const deleteEntry = async (id: string) => {
     try {
       await deleteDoc(doc(db, `users/${auth.currentUser?.uid}/journalEntries`, id));
-      setEntries(prev => prev.filter(e => e.id !== id));
-    } catch (err) {
-      console.error('Delete failed:', err);
+      setEntries((prev) => prev.filter((e) => e.id !== id));
+    } catch {
       Alert.alert('Error', 'Failed to delete entry.');
     }
   };
@@ -62,10 +61,7 @@ export default function JournalListScreen() {
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
       <View style={styles.overlay} />
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
         <Feather name="arrow-left" size={24} color="#fff" />
       </TouchableOpacity>
 
@@ -87,7 +83,7 @@ export default function JournalListScreen() {
         {entries.length === 0 ? (
           <Text style={styles.emptyText}>No entries found.</Text>
         ) : (
-          entries.map(entry => (
+          entries.map((entry) => (
             <View key={entry.id} style={styles.card}>
               <View style={styles.cardRow}>
                 <View style={{ flex: 1 }}>
@@ -112,18 +108,10 @@ export default function JournalListScreen() {
                       variant="danger"
                       label="Delete"
                       onPress={() => {
-                        Alert.alert(
-                          'Delete Entry',
-                          'Are you sure you want to delete this item?',
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            {
-                              text: 'Delete',
-                              style: 'destructive',
-                              onPress: () => deleteEntry(entry.id),
-                            },
-                          ]
-                        );
+                        Alert.alert('Delete Entry', 'Are you sure you want to delete this item?', [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Delete', style: 'destructive', onPress: () => deleteEntry(entry.id) },
+                        ]);
                       }}
                       style={styles.actionButton}
                     />
@@ -144,67 +132,18 @@ export default function JournalListScreen() {
 
 const styles = StyleSheet.create({
   background: { flex: 1 },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  container: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  title: {
-    fontSize: 45,
-    fontWeight: 'bold',
-    color: '#FFD700',
-    marginBottom: 15,
-    marginTop: 80,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#ccc',
-    marginTop: 20,
-  },
-  card: {
-    backgroundColor: '#333',
-    borderRadius: 10,
-    padding: 15,
-    marginVertical: 10,
-    width: '90%',
-  },
-  label: {
-    fontSize: 18,
-    color: '#FFD700',
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  details: {
-    fontSize: 14,
-    color: '#eee',
-    marginBottom: 2,
-  },
-  buttonWrapper: {
-    width: '80%',
-    marginBottom: 20,
-  },
-  cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  thumbnail: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginLeft: 10,
-    backgroundColor: '#222',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    marginTop: 10,
-  },
-  actionButton: {
-    flex: 1,
-    marginHorizontal: 4,
-  },
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
+  container: { alignItems: 'center', paddingVertical: 20 },
+  title: { fontSize: 45, fontWeight: 'bold', color: '#FFD700', marginBottom: 15, marginTop: 80 },
+  emptyText: { fontSize: 16, color: '#ccc', marginTop: 20 },
+  card: { backgroundColor: '#333', borderRadius: 10, padding: 15, marginVertical: 10, width: '90%' },
+  label: { fontSize: 18, color: '#FFD700', fontWeight: 'bold', marginBottom: 5 },
+  details: { fontSize: 14, color: '#eee', marginBottom: 2 },
+  buttonWrapper: { width: '80%', marginBottom: 20 },
+  cardRow: { flexDirection: 'row', alignItems: 'center' },
+  thumbnail: { width: 80, height: 80, borderRadius: 8, marginLeft: 10, backgroundColor: '#222' },
+  actionRow: { flexDirection: 'row', marginTop: 10 },
+  actionButton: { flex: 1, marginHorizontal: 4 },
   backButton: {
     position: 'absolute',
     top: 30,

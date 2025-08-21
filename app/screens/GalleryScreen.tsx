@@ -39,7 +39,7 @@ export default function GalleryScreen() {
     Array<{
       title: string;
       folder: string;
-      previewUri: string;
+      previewUri: string | null;
       photoCount: number;
       date: string;
       tags?: string[];
@@ -57,6 +57,7 @@ export default function GalleryScreen() {
   const [tempTags, setTempTags] = useState<string[]>([]);
   const [showTagModal, setShowTagModal] = useState(false);
 
+  // Load hunts from local FS + Firestore metadata; optional tag filter
   const loadHuntFolders = async () => {
     try {
       const user = auth.currentUser;
@@ -74,33 +75,15 @@ export default function GalleryScreen() {
       const localItems = await FileSystem.readDirectoryAsync(
         FileSystem.documentDirectory || ''
       );
-      const huntFolders = localItems.filter(
+      const localHuntFolders = localItems.filter(
         (name) =>
           firestoreFolders.includes(name) &&
           name.startsWith('hunt_') &&
           !name.endsWith('.jpg')
       );
 
-      await Promise.all(
-        huntFolders.map(async (folder) => {
-          const folderUri = FileSystem.documentDirectory + folder + '/';
-          try {
-            const metadataStr = await FileSystem.readAsStringAsync(
-              folderUri + 'metadata.json'
-            );
-            const metadata = JSON.parse(metadataStr);
-            const tags = metadata.tags || [];
-            const hasMatch =
-              filterTags.length === 0 || tags.some((tag: string) => filterTags.includes(tag));
-            return hasMatch ? folder : null;
-          } catch {
-            return null;
-          }
-        })
-      );
-
       const huntData = await Promise.all(
-        huntFolders.map(async (folder) => {
+        localHuntFolders.map(async (folder) => {
           const folderUri = FileSystem.documentDirectory + folder + '/';
           let imageFiles: string[] = [];
           let title = 'Untitled Hunt';
@@ -110,7 +93,7 @@ export default function GalleryScreen() {
             const files = await FileSystem.readDirectoryAsync(folderUri);
             imageFiles = files.filter((f) => f.endsWith('.jpg'));
           } catch {
-            console.warn(`Failed to read files for folder: ${folder}`);
+            // No-op: folder unreadable
           }
 
           try {
@@ -119,14 +102,12 @@ export default function GalleryScreen() {
             title = parsed.title || title;
             tags = parsed.tags || [];
           } catch {
-            console.warn(`No or bad metadata for folder: ${folder}`);
+            // No-op: missing/invalid metadata
           }
 
           return {
             folder,
-            previewUri: imageFiles.length
-              ? folderUri + imageFiles[0]
-              : null, // null instead of crashing
+            previewUri: imageFiles.length ? folderUri + imageFiles[0] : null,
             photoCount: imageFiles.length,
             date: new Date(Number(folder.split('_')[1]) || Date.now()).toLocaleDateString(),
             title,
@@ -136,8 +117,8 @@ export default function GalleryScreen() {
       );
 
       setHuntFolders(huntData.filter(Boolean).reverse());
-    } catch (error) {
-      console.error('Failed to load hunts:', error);
+    } catch {
+      // No-op: silent failure to avoid noisy logs in production
     }
   };
 
@@ -175,15 +156,13 @@ export default function GalleryScreen() {
                 const data = huntDoc.data();
                 if (data.folderName === folder) {
                   await deleteDoc(doc(db, `users/${user.uid}/hunts`, huntDoc.id));
-                  console.log('🗑️ Deleted Firestore hunt entry:', huntDoc.id);
                   break;
                 }
               }
             }
 
             loadHuntFolders();
-          } catch (err) {
-            console.error('Failed to delete folder:', err);
+          } catch {
             Alert.alert('Error', 'Could not delete the folder.');
           }
         },
@@ -204,11 +183,11 @@ export default function GalleryScreen() {
         </View>
 
         <View style={{ marginBottom: 20 }}>
-          <Text style={styles.title}>Your Hunts </Text>
+          <Text style={styles.title}>Your Hunts</Text>
         </View>
 
         {huntFolders.length === 0 ? (
-          <Text style={styles.message}>No saved hunts found. </Text>
+          <Text style={styles.message}>No saved hunts found.</Text>
         ) : (
           huntFolders.map((hunt, index) => (
             <TouchableOpacity
@@ -218,7 +197,7 @@ export default function GalleryScreen() {
             >
               <View style={{ padding: 10 }}>
                 <Text style={styles.huntTitle}>{hunt.title}</Text>
-                {hunt.tags && hunt.tags.length > 0 && (
+                {!!(hunt.tags && hunt.tags.length) && (
                   <View style={styles.tagFooter}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       {(hunt.tags ?? []).map((tag, i) => (
@@ -242,10 +221,8 @@ export default function GalleryScreen() {
               <View style={styles.infoPanel}>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
                   <TouchableOpacity onPress={() => handleRename(hunt.folder)}>
-                    <Text
-                      style={[styles.imageLabel, { textDecorationLine: 'underline' }]}
-                    >
-                      Rename{' '}
+                    <Text style={[styles.imageLabel, { textDecorationLine: 'underline' }]}>
+                      Rename
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDelete(hunt.folder)}>
@@ -255,7 +232,7 @@ export default function GalleryScreen() {
                         { textDecorationLine: 'underline', color: '#ff4444' },
                       ]}
                     >
-                      Delete{' '}
+                      Delete
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -271,7 +248,7 @@ export default function GalleryScreen() {
                         { textDecorationLine: 'underline', color: '#00d9ff' },
                       ]}
                     >
-                      Tags{' '}
+                      Tags
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -285,7 +262,7 @@ export default function GalleryScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* MODAL: Rename Hunt */}
+      {/* Rename modal */}
       <Modal
         visible={showRenameModal}
         transparent
@@ -340,7 +317,7 @@ export default function GalleryScreen() {
         </View>
       </Modal>
 
-      {/* MODAL: Tags */}
+      {/* Tags modal */}
       <Modal
         visible={showTagModal}
         transparent
@@ -376,7 +353,7 @@ export default function GalleryScreen() {
                         );
                         metadata = { ...existing, tags: tempTags };
                       }
-                    } catch { }
+                    } catch {}
                     await FileSystem.writeAsStringAsync(
                       folderUri + 'metadata.json',
                       JSON.stringify(metadata)
@@ -410,29 +387,11 @@ export default function GalleryScreen() {
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  container: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFD700',
-    marginBottom: 5,
-    marginTop: 65,
-  },
-  message: {
-    fontSize: 18,
-    color: '#ccc',
-    marginTop: 40,
-  },
+  background: { flex: 1 },
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
+  container: { paddingVertical: 20, alignItems: 'center' },
+  title: { fontSize: 20, fontWeight: 'bold', color: '#FFD700', marginBottom: 5, marginTop: 65 },
+  message: { fontSize: 18, color: '#ccc', marginTop: 40 },
   imageCard: {
     marginBottom: 20,
     borderRadius: 12,
@@ -444,57 +403,24 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     backgroundColor: '#1f1f1f',
   },
-  image: {
-    width: '100%',
-    height: 280,
-  },
   infoPanel: {
     padding: 10,
     backgroundColor: 'rgba(0,0,0,0.6)',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  imageLabel: {
-    color: '#fff',
-    fontSize: 14,
-  },
+  imageLabel: { color: '#fff', fontSize: 14 },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContent: {
-    backgroundColor: '#222',
-    padding: 20,
-    borderRadius: 10,
-    width: '80%',
-  },
-  modalTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#555',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 20,
-    color: '#fff',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  huntTitle: {
-    color: '#FFD700',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 6,
-  },
+  modalContent: { backgroundColor: '#222', padding: 20, borderRadius: 10, width: '80%' },
+  modalTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
+  input: { borderWidth: 1, borderColor: '#555', borderRadius: 8, padding: 10, marginBottom: 20, color: '#fff' },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-between' },
+  huntTitle: { color: '#FFD700', fontSize: 16, fontWeight: 'bold', marginBottom: 6 },
   tagChip: {
     backgroundColor: '#FFD700',
     paddingHorizontal: 10,
@@ -503,11 +429,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
     marginBottom: 6,
   },
-  tagText: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
+  tagText: { color: '#000', fontWeight: 'bold', fontSize: 12 },
   tagFooter: {
     backgroundColor: '#222',
     paddingHorizontal: 10,

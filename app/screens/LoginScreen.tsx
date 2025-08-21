@@ -31,6 +31,7 @@ export default function LoginScreen() {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
 
+  // Attempt sign-in; show inline error and disable button while pending
   const handleLogin = async () => {
     if (!email || !password) {
       setError('Please fill in both fields');
@@ -99,10 +100,7 @@ export default function LoginScreen() {
           <Text style={styles.toggleText}>Don't have an account? Sign Up</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Feather name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>
       </AuthBackground>

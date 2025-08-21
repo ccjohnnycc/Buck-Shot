@@ -43,7 +43,7 @@ export default function BSButton({
   );
 }
 
-/** Design tokens — change here, app updates everywhere */
+
 export const theme = {
   colors: {
     primary: '#FFD700',   // gold

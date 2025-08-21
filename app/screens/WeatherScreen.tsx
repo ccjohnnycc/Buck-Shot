@@ -11,11 +11,11 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
-// Map weather codes to labels, emojis, and gradients (tuple for TS)
+// Map weather codes → label/emoji/gradient
 const weatherCodeMap: Record<number, { label: string; emoji: string; gradient: [string, string] }> = {
   0: { label: 'Clear ', emoji: '☀️', gradient: ['#6190E8', '#A7BFE8'] },
   1: { label: 'Mostly Clear ', emoji: '🌤️', gradient: ['#6190E8', '#A7BFE8'] },
@@ -62,35 +62,30 @@ function degToCompass(deg: number): string {
 }
 
 export default function WeatherScreen() {
-  const navigation = useNavigation();
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // compute local date & hour keys
+  // Build local date keys for filtering
   const now = new Date();
-  const localOffset = now.getTimezoneOffset() * 60000; // in ms
+  const localOffset = now.getTimezoneOffset() * 60000;
   const localDateKey = new Date(now.getTime() - localOffset).toISOString().split('T')[0];
-
-  function getFilteredDailyTime(apiDates: string[]): string[] {
-    const todayIndex = apiDates.findIndex(d => d === localDateKey);
-    return todayIndex >= 0 ? apiDates.slice(todayIndex) : apiDates;
-  }
-
-
-
   const localHourKey = `${localDateKey}T${String(now.getHours()).padStart(2, '0')}:00`;
 
-  // selected day state, initial to today
-  const [selectedDailyDate, setSelectedDailyDate] = useState<string>(localDateKey);
+  const getFilteredDailyTime = (apiDates: string[]): string[] => {
+    const todayIndex = apiDates.findIndex((d) => d === localDateKey);
+    return todayIndex >= 0 ? apiDates.slice(todayIndex) : apiDates;
+  };
 
-  // reset to today when screen focused
+  // Selected day (defaults to today, reset on focus)
+  const [selectedDailyDate, setSelectedDailyDate] = useState<string>(localDateKey);
   useFocusEffect(
     useCallback(() => {
       setSelectedDailyDate(localDateKey);
     }, [localDateKey])
   );
 
+  // Fetch weather for current location
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -108,16 +103,13 @@ export default function WeatherScreen() {
         const res = await fetch(url);
         const data = await res.json();
         setWeather(data);
+
         const filteredTime = getFilteredDailyTime(data.daily.time);
         setSelectedDailyDate(filteredTime[0]);
-        console.log('Local date:', localDateKey);
-        console.log('API daily time:', data.daily.time);
-
       } catch {
         setError('Could not fetch weather');
       }
       setLoading(false);
-
     })();
   }, []);
 
@@ -128,17 +120,12 @@ export default function WeatherScreen() {
   const { current_weather: cw, hourly, daily } = weather;
   const wc = weatherCodeMap[cw.weathercode] || weatherCodeMap[0];
 
-  // find index for selectedDailyDate
+  // Index for selected day
   const filteredDailyTime = getFilteredDailyTime(daily.time);
-
-
   const validDailyIndex = filteredDailyTime.indexOf(selectedDailyDate);
 
-
-  // hourlyIndices for date
-  const dayIndices = hourly.time
-    .map((t, i) => t.startsWith(selectedDailyDate) ? i : -1)
-    .filter(i => i >= 0);
+  // Hourly window for selected day (start at current hour if today)
+  const dayIndices = hourly.time.map((t, i) => (t.startsWith(selectedDailyDate) ? i : -1)).filter((i) => i >= 0);
   let startPos = 0;
   if (selectedDailyDate === localDateKey) {
     const pos = dayIndices.indexOf(hourly.time.indexOf(localHourKey));
@@ -149,24 +136,26 @@ export default function WeatherScreen() {
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
       <LinearGradient colors={wc.gradient} style={styles.overlay} start={[0, 0]} end={[1, 1]} />
-      <View style={styles.container}>
 
-        {/* Current Weather Card */}
-        <View style={styles.currentCard} >
+      <View style={styles.container}>
+        {/* Current Weather */}
+        <View style={styles.currentCard}>
           <Text style={styles.emoji}>{wc.emoji} </Text>
           <Text style={styles.temp}>{Math.round(cw.temperature)}°F </Text>
           <Text style={styles.desc}>{wc.label} </Text>
-          <Text style={styles.detail} >
-            High {Math.round(weather.daily.temperature_2m_max[validDailyIndex])}° / Low {Math.round(weather.daily.temperature_2m_min[validDailyIndex])}° </Text>
+          <Text style={styles.detail}>
+            High {Math.round(weather.daily.temperature_2m_max[validDailyIndex])}° / Low {Math.round(weather.daily.temperature_2m_min[validDailyIndex])}°
+          </Text>
           <Text style={styles.wind}> 💨 {cw.windspeed} mph  {degToCompass(cw.winddirection)} </Text>
         </View>
 
         {/* Hourly */}
         <FlatList
           data={hourlyIndices}
-          horizontal showsHorizontalScrollIndicator={false}
+          horizontal
+          showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.hourlyList}
-          keyExtractor={i => String(i)}
+          keyExtractor={(i) => String(i)}
           renderItem={({ item: i }) => {
             const hr = new Date(hourly.time[i]).getHours();
             return (
@@ -182,19 +171,21 @@ export default function WeatherScreen() {
 
         {/* Daily */}
         <FlatList
-          data={filteredDailyTime} horizontal showsHorizontalScrollIndicator={false}
+          data={filteredDailyTime}
+          horizontal
+          showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.dailyList}
-          keyExtractor={d => d}
+          keyExtractor={(d) => d}
           renderItem={({ item: dateStr }) => {
             const idx = daily.time.indexOf(dateStr);
             const [year, month, day] = dateStr.split('-').map(Number);
             const localDate = new Date(year, month - 1, day);
             const dayLabel = localDate.toLocaleDateString('en-US', { weekday: 'short' });
-
             const isSel = dateStr === selectedDailyDate;
+
             return (
-              <TouchableOpacity onPress={() => setSelectedDailyDate(dateStr)} >
-                <View style={[styles.dailyItem, isSel && styles.dailySelected]} >
+              <TouchableOpacity onPress={() => setSelectedDailyDate(dateStr)}>
+                <View style={[styles.dailyItem, isSel && styles.dailySelected]}>
                   <Text style={styles.dayText}>{dayLabel} </Text>
                   <Text style={styles.dailyTemp}>{Math.round(daily.temperature_2m_max[idx])}° </Text>
                   <Text style={styles.dailyMin}>{Math.round(daily.temperature_2m_min[idx])}° </Text>
@@ -214,7 +205,18 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 50, alignItems: 'center' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   error: { color: 'red' },
-  currentCard: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 18, padding: 20, alignItems: 'center', marginBottom: 24, width: width * 0.9, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  currentCard: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 18,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 24,
+    width: width * 0.9,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
   emoji: { fontSize: 64, marginBottom: 12 },
   temp: { fontSize: 48, color: '#fff', fontWeight: 'bold' },
   desc: { fontSize: 24, color: '#fff', marginVertical: 4 },

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -20,7 +21,6 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { signOut } from 'firebase/auth';
 import { registerForPushNotificationsAsync, scheduleSeasonNotifications } from './notifications';
 import * as ImagePicker from 'expo-image-picker';
-import * as Notifications from 'expo-notifications';
 import BSButton from '../components/BSButton';
 
 const ProfileScreen = () => {
@@ -30,21 +30,23 @@ const ProfileScreen = () => {
   const [huntCount, setHuntCount] = useState<number>(0);
   const [journalCount, setJournalCount] = useState<number>(0);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [name, setName] = useState<string>('');
+  const [name, setName] = useState<string>(''); // reserved for future profile names
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
+  // Load cached email/avatar, then fetch counts
   useEffect(() => {
-    AsyncStorage.getItem('userEmail').then(storedEmail => {
+    AsyncStorage.getItem('userEmail').then((storedEmail) => {
       if (storedEmail) {
         setEmail(storedEmail);
         fetchStats(storedEmail);
       }
-      AsyncStorage.getItem('profileImage').then(uri => {
+      AsyncStorage.getItem('profileImage').then((uri) => {
         if (uri) setProfileImage(uri);
       });
     });
   }, []);
 
+  // Query Firestore for simple stats
   const fetchStats = async (_userEmail: string) => {
     const user = auth.currentUser;
     if (!user) return;
@@ -54,31 +56,6 @@ const ProfileScreen = () => {
 
     const journalSnapshot = await getDocs(collection(db, `users/${user.uid}/journalEntries`));
     setJournalCount(journalSnapshot.size);
-  };
-
-  const sendTestNotification = async () => {
-    try {
-      const token = await AsyncStorage.getItem('expoPushToken');
-      if (!token) {
-        Alert.alert('No push token found', 'Please enable notifications first.');
-        return;
-      }
-
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Test Notification',
-          body: 'This is a test notification from Buck Shot!',
-          data: { test: 'data' },
-        },
-        trigger: null,
-      });
-
-      Alert.alert('Notification sent', 'Check your device for the test notification.');
-    } catch (err) {
-      console.error(err);
-      const message = err instanceof Error ? err.message : String(err);
-      Alert.alert('Error sending notification', message);
-    }
   };
 
   const handleLogout = async () => {
@@ -91,6 +68,7 @@ const ProfileScreen = () => {
     }
   };
 
+  // Pick local avatar and cache URI
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -112,6 +90,7 @@ const ProfileScreen = () => {
     }
   };
 
+  // Test cloud sync; refresh counts
   const handleUpload = async () => {
     setStatus('Uploading test hunt…');
     setLoading(true);
@@ -121,22 +100,21 @@ const ProfileScreen = () => {
         setStatus('Uploaded');
         await fetchStats(email || (await AsyncStorage.getItem('userEmail')) || '');
       } else {
-        setStatus('Upload failed. See console.');
+        setStatus('Upload failed.');
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
       setStatus('An error occurred.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Register for push + schedule season reminders
   useEffect(() => {
     registerForPushNotificationsAsync().then(() => {
       scheduleSeasonNotifications();
     });
   }, []);
-
 
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
@@ -144,11 +122,7 @@ const ProfileScreen = () => {
       <View style={styles.container}>
         <TouchableOpacity onPress={pickImage}>
           <Image
-            source={
-              profileImage
-                ? { uri: profileImage }
-                : require('../../assets/placeholder_user.png')
-            }
+            source={profileImage ? { uri: profileImage } : require('../../assets/placeholder_user.png')}
             style={styles.profilePic}
           />
         </TouchableOpacity>
@@ -162,7 +136,7 @@ const ProfileScreen = () => {
           <Text style={styles.stat}>Journal Entries: {journalCount}</Text>
         </View>
 
-        {/* Navigation Buttons */}
+        {/* Navigation */}
         <View style={styles.buttonGroup}>
           <BSButton
             label="View Journal"
@@ -186,35 +160,17 @@ const ProfileScreen = () => {
             style={{ width: '100%' }}
           />
 
-          {/* Example: keep this commented action available as a shared button too */}
-          {/* <View style={{ marginVertical: 8 }} />
-          <BSButton
-            label="Send Test Notification"
-            onPress={sendTestNotification}
-            variant="primary"
-            style={{ width: '100%' }}
-          /> */}
-
           <View style={{ marginVertical: 8 }} />
-          <BSButton
-            label="Logout"
-            onPress={handleLogout}
-            variant="danger"
-            style={{ width: '100%' }}
-          />
+          <BSButton label="Logout" onPress={handleLogout} variant="danger" style={{ width: '100%' }} />
         </View>
 
         {status ? <Text style={styles.status}>{status}</Text> : null}
         {loading && <ActivityIndicator size="large" color="#FFD700" />}
       </View>
 
-      {/* Link to Deer Harvest Reports */}
+      {/* Shortcut to harvest reports */}
       <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
-        <BSButton
-          label="Deer Harvest Reports"
-          onPress={() => navigation.navigate('HarvestReports')}
-          style={{ width: '100%' }}
-        />
+        <BSButton label="Deer Harvest Reports" onPress={() => navigation.navigate('HarvestReports')} style={{ width: '100%' }} />
       </View>
     </ImageBackground>
   );
@@ -225,19 +181,8 @@ export default ProfileScreen;
 const styles = StyleSheet.create({
   background: { flex: 1 },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    paddingTop: 80,
-    paddingHorizontal: 20,
-  },
-  title: {
-    fontSize: 24,
-    color: '#FFD700',
-    fontWeight: 'bold',
-    marginTop: 10,
-    marginBottom: 20,
-  },
+  container: { flex: 1, alignItems: 'center', paddingTop: 80, paddingHorizontal: 20 },
+  title: { fontSize: 24, color: '#FFD700', fontWeight: 'bold', marginTop: 10, marginBottom: 20 },
   statsBox: {
     backgroundColor: '#222',
     borderRadius: 12,
@@ -254,8 +199,5 @@ const styles = StyleSheet.create({
   buttonGroup: { width: '90%', marginBottom: 20 },
   bottomButtons: { marginTop: 10, width: '80%' },
   status: { marginTop: 20, color: '#fff', fontStyle: 'italic' },
-  profilePic: {
-    width: 100, height: 100, borderRadius: 50,
-    borderWidth: 2, borderColor: '#FFD700', marginBottom: 10,
-  },
+  profilePic: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: '#FFD700', marginBottom: 10 },
 });

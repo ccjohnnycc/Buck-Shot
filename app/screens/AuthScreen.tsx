@@ -1,11 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Image } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Image, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect } from 'react';
 import { auth } from '../services/firebaseconfig';
 import { onAuthStateChanged } from 'firebase/auth';
 import BSButton from '../components/BSButton';
@@ -14,25 +12,20 @@ type AuthNavProp = NativeStackNavigationProp<RootStackParamList, 'AuthLanding'>;
 
 export default function AuthLandingScreen() {
   const navigation = useNavigation<AuthNavProp>();
-  const background = require('../../assets/background_image.png'); // forest-style image
-  const logo = require('../../assets/title_buck.png'); // buck logo
-  const icon = require('../../assets/Buck-Shot_noBack.png'); // buck shot icon
+  const background = require('../../assets/background_image.png');
+  const logo = require('../../assets/title_buck.png');
+  const icon = require('../../assets/Buck-Shot_noBack.png');
 
+  // Auto-redirect user if already logged in
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        console.log('Auth state changed: Logged in as', user.email);
         await AsyncStorage.setItem('userEmail', user.email || '');
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        });
+        navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
       } else {
-        console.log('Auth state changed: Not logged in');
         await AsyncStorage.removeItem('userEmail');
       }
     });
-
     return unsubscribe;
   }, []);
 
@@ -42,7 +35,6 @@ export default function AuthLandingScreen() {
 
       <ScrollView contentContainerStyle={styles.container}>
         <Image source={logo} style={styles.logo} resizeMode="contain" />
-
         <Image source={icon} style={styles.iconImage} resizeMode="contain" />
 
         <BSButton
@@ -51,7 +43,7 @@ export default function AuthLandingScreen() {
           onPress={() => navigation.navigate('Login')}
         />
 
-        <Text style={styles.orText}>OR </Text>
+        <Text style={styles.orText}>OR</Text>
 
         <BSButton
           variant="ghost"
@@ -64,7 +56,7 @@ export default function AuthLandingScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity>
-          <Text style={styles.link}>Privacy Policy </Text>
+          <Text style={styles.link}>Privacy Policy</Text>
         </TouchableOpacity>
       </ScrollView>
     </ImageBackground>
@@ -72,9 +64,7 @@ export default function AuthLandingScreen() {
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
+  background: { flex: 1 },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -102,22 +92,10 @@ const styles = StyleSheet.create({
     width: '80%',
     alignItems: 'center',
   },
-  buttonText: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  guestButton: {
-    marginVertical: 12,
-  },
-  guestText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  orText: {
-    color: '#fff',
-    marginVertical: 8,
-  },
+  buttonText: { color: '#000', fontWeight: 'bold', fontSize: 16 },
+  guestButton: { marginVertical: 12 },
+  guestText: { color: '#fff', fontSize: 16 },
+  orText: { color: '#fff', marginVertical: 8 },
   link: {
     color: '#aaa',
     fontSize: 14,

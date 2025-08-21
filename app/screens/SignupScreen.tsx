@@ -5,19 +5,15 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createUserWithEmailAndPassword, getAuth, updateProfile } from 'firebase/auth';
-import { app, auth, db } from '../services/firebaseconfig';
-import { doc, setDoc } from 'firebase/firestore';
+import { app } from '../services/firebaseconfig';
 import { AuthBackground } from './AuthBackground';
 import BSButton from '../components/BSButton';
-import { Alert } from 'react-native';
 
-type RootStackParamList = {
-  Main: undefined;
-};
+type RootStackParamList = { Main: undefined };
 
 export default function SignupScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -25,46 +21,35 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-const handleSignup = async () => {
-  if (!email || !password) {
-    Alert.alert('Missing Info', 'Please enter both email and password.');
-    return;
-  }
-
-  setLoading(true);
-  try {
-    const auth = getAuth(app);
-    const userCred = await createUserWithEmailAndPassword(auth, email, password);
-
-    if (name) {
-      await updateProfile(userCred.user, { displayName: name });
+  // Create account and set optional display name
+  const handleSignup = async () => {
+    if (!email || !password) {
+      Alert.alert('Missing Info', 'Please enter both email and password.');
+      return;
     }
 
-    Alert.alert('Account Created', 'Your account was successfully created!');
-    navigation.navigate('Main');
-  } catch (err: any) {
-    console.error('Signup error:', err);
-    let message = 'An unexpected error occurred. Please try again.';
-    if (err.code === 'auth/email-already-in-use') {
-      message = 'That email is already in use.';
-    } else if (err.code === 'auth/invalid-email') {
-      message = 'Invalid email address.';
-    } else if (err.code === 'auth/weak-password') {
-      message = 'Password should be at least 6 characters.';
+    setLoading(true);
+    try {
+      const auth = getAuth(app);
+      const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      if (name) await updateProfile(userCred.user, { displayName: name });
+
+      Alert.alert('Account Created', 'Your account was successfully created!');
+      navigation.navigate('Main');
+    } catch (err: any) {
+      let message = 'An unexpected error occurred. Please try again.';
+      if (err.code === 'auth/email-already-in-use') message = 'That email is already in use.';
+      else if (err.code === 'auth/invalid-email') message = 'Invalid email address.';
+      else if (err.code === 'auth/weak-password') message = 'Password should be at least 6 characters.';
+      Alert.alert('Signup Failed', message);
+    } finally {
+      setLoading(false);
     }
-    Alert.alert('Signup Failed', message);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.container}
-    >
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
       <AuthBackground>
         <Text style={styles.title}>Sign Up </Text>
 
@@ -93,21 +78,9 @@ const handleSignup = async () => {
           onChangeText={setPassword}
         />
 
-        {error && <Text style={styles.errorText}>{error} </Text>}
+        <BSButton label="Sign Up" onPress={handleSignup} loading={loading} style={{ width: '100%', marginTop: 10 }} />
 
-        <BSButton
-          label="Sign Up"
-          onPress={handleSignup}
-          loading={loading}
-          style={{ width: '100%', marginTop: 10 }}
-        />
-
-        <BSButton
-          variant="ghost"
-          label="← Back to Login"
-          onPress={() => navigation.goBack()}
-          style={{ marginTop: 8 }}
-        />
+        <BSButton variant="ghost" label="← Back to Login" onPress={() => navigation.goBack()} style={{ marginTop: 8 }} />
       </AuthBackground>
     </KeyboardAvoidingView>
   );
@@ -126,6 +99,4 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
   },
-  errorText: { color: '#FF4C4C', marginBottom: 12 },
-  toggleText: { color: '#FFD700', marginTop: 16, fontWeight: '600' },
 });

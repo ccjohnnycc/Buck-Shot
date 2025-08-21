@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TextInput,
   Button,
   Platform,
@@ -49,30 +48,39 @@ const getPhaseName = (p: number) => {
   return 'Waning Crescent 🌘';
 };
 
-// type definitions
-type DateData = { dateString: string; day: number; month: number; year: number; timestamp: number };
-type MarkedDates = Record<string, { marked?: boolean; selected?: boolean; color?: string; textColor?: string; startingDay?: boolean; endingDay?: boolean }>;
+type MarkedDates = Record<
+  string,
+  {
+    marked?: boolean;
+    selected?: boolean;
+    color?: string;
+    textColor?: string;
+    startingDay?: boolean;
+    endingDay?: boolean;
+  }
+>;
 type MyEntry = { name: string; height: number; day: string; hour: number };
 type MySchedule = Record<string, MyEntry[]>;
 
 export default function CalendarScreen() {
   const user = auth.currentUser;
   if (!user) return null;
-  // location for SunCalc (approx central FL)
-  const LAT = 28.5383, LON = -81.3792;
 
-  const STORAGE_KEY = user ? `@myApp:events_${user.uid}` : null;
-  const today = new Date();
-  const todayKey = today.toISOString().split('T')[0];
+  // SunCalc location (Central FL approx)
+  const LAT = 28.5383,
+    LON = -81.3792;
+
+  // Per-user local storage key
+  const STORAGE_KEY = `@myApp:events_${user.uid}`;
+  const todayKey = new Date().toISOString().split('T')[0];
 
   // state
   const [items, setItems] = useState<MySchedule>({});
   const [selectedDay, setSelectedDay] = useState<string>(todayKey);
   const [selectedAnimal, setSelectedAnimal] = useState<'deer' | 'turkey' | 'dove'>('deer');
   const [currentDate, setCurrentDate] = useState<Date>(
-    new Date(today.getFullYear(), today.getMonth(), 1)
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1)
   );
-  const [newText, setNewText] = useState('');
 
   // Moon & feeding info
   const [moonPhase, setMoonPhase] = useState<string>('');
@@ -84,24 +92,17 @@ export default function CalendarScreen() {
   const [modalHour, setModalHour] = useState<number | null>(null);
   const [modalText, setModalText] = useState('');
 
-
-  // Load/init events
+  // Init: load or seed a +/-30 day window
   useEffect(() => {
-    if (STORAGE_KEY) {
-      AsyncStorage.getItem(STORAGE_KEY).then(json => {
-        if (json) setItems(JSON.parse(json));
-        else initializeEmpty();
-      });
-    } else {
-      initializeEmpty();
-    }
+    AsyncStorage.getItem(STORAGE_KEY).then((json) => {
+      if (json) setItems(JSON.parse(json));
+      else initializeEmpty();
+    });
   }, [user?.uid]);
 
-  // Persist on items change (only for signed-in users)
+  // Persist changes
   useEffect(() => {
-    if (STORAGE_KEY) {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    }
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
   function initializeEmpty() {
@@ -115,7 +116,7 @@ export default function CalendarScreen() {
     setItems(map);
   }
 
-  // When user picks a new animal, jump calendar to that season
+  // When animal changes, jump to first month of that season
   useEffect(() => {
     const seasons = FL_SEASONS[selectedAnimal];
     if (seasons.length) {
@@ -125,35 +126,37 @@ export default function CalendarScreen() {
     }
   }, [selectedAnimal]);
 
-  // Compute moon & feeding when day changes
+  // Recompute moon/feeding for selected day
   useEffect(() => {
     const d = new Date(selectedDay + 'T12:00:00');
     const illum = SunCalc.getMoonIllumination(d);
     setIllumination(illum.fraction);
     setMoonPhase(getPhaseName(illum.phase));
-    const times = SunCalc.getTimes(d, LAT, LON);
-    const { sunrise, sunset } = times;
-    const fmt = (date: Date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const { sunrise, sunset } = SunCalc.getTimes(d, LAT, LON);
+    const fmt = (date: Date) =>
+      date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setFeedAM([fmt(new Date(sunrise.getTime() - 3600000)), fmt(sunrise)]);
     setFeedPM([fmt(sunset), fmt(new Date(sunset.getTime() + 3600000))]);
   }, [selectedDay]);
 
-  // Add event
+  // Add event at specific hour
   function addEventAtHour(hour: number, name: string) {
     if (!user) {
       Alert.alert('Sign in required', 'Please sign in to set reminders.');
       return;
     }
     Keyboard.dismiss();
-    setItems(prev => ({
+    setItems((prev) => ({
       ...prev,
-      [selectedDay]: [...(prev[selectedDay] || []), { name, height: 50, day: selectedDay, hour }]
+      [selectedDay]: [
+        ...(prev[selectedDay] || []),
+        { name, height: 50, day: selectedDay, hour },
+      ],
     }));
   }
 
-  // Build markedDates
+  // Build markedDates: (1) seasons, (2) user dots, (3) selected day
   const markedDates: MarkedDates = {};
-  // 1) Shade the entire season in green
   FL_SEASONS[selectedAnimal].forEach(({ start, end }) => {
     let d = new Date(start),
       last = new Date(end);
@@ -169,8 +172,6 @@ export default function CalendarScreen() {
       d.setDate(d.getDate() + 1);
     }
   });
-
-  // 2) Any user‐added events (if you still need dots)
   Object.entries(items).forEach(([day, evts]) => {
     if (evts.length) {
       markedDates[day] = {
@@ -179,15 +180,11 @@ export default function CalendarScreen() {
       };
     }
   });
-
-  // 3) Finally, mark the selected day
   markedDates[selectedDay] = {
     ...(markedDates[selectedDay] || {}),
     selected: true,
   };
 
-  // helpers
-  const formatMonthYear = (d: Date) => d.toLocaleString('default', { month: 'long', year: 'numeric' });
   const currentKey = currentDate.toISOString().split('T')[0];
 
   return (
@@ -197,13 +194,12 @@ export default function CalendarScreen() {
     >
       <SafeAreaView style={styles.safe}>
         <View style={styles.container}>
-
           {/* Animal filter */}
           <View style={styles.filterContainer}>
             <Text style={styles.filterLabel}>Hunt: </Text>
             <Picker
               selectedValue={selectedAnimal}
-              onValueChange={val => setSelectedAnimal(val as any)}
+              onValueChange={(val) => setSelectedAnimal(val as any)}
               style={styles.picker}
               itemStyle={{ color: '#FFD700' }}
               dropdownIconColor="#FFD700"
@@ -233,7 +229,7 @@ export default function CalendarScreen() {
             }}
           />
 
-          {/* New event input */}
+          {/* Hourly list w/ quick-add modal */}
           <ScrollView style={{ maxHeight: 240, marginVertical: 12 }}>
             {Array.from({ length: 24 }, (_, h) => (
               <TouchableOpacity
@@ -255,13 +251,12 @@ export default function CalendarScreen() {
                   {String(h).padStart(2, '0')}:00
                 </Text>
                 {(items[selectedDay] || [])
-                  .filter(e => e.hour === h)
+                  .filter((e) => e.hour === h)
                   .map((e, i) => (
                     <Text key={i} style={{ marginLeft: 8, color: '#fff' }}>
                       {e.name}
                     </Text>
-                  ))
-                }
+                  ))}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -296,13 +291,18 @@ export default function CalendarScreen() {
             </View>
           </Modal>
 
-
-          {/* Moon & feeding info panel */}
+          {/* Moon & feeding info */}
           <View style={styles.moonInfo}>
             <Text style={styles.moonText}>Phase: {moonPhase}</Text>
-            <Text style={styles.moonText}>Illumination: {(illumination * 100).toFixed(0)}%</Text>
-            <Text style={styles.moonText}>AM Feeding: {feedAM[0]}–{feedAM[1]}</Text>
-            <Text style={styles.moonText}>PM Feeding: {feedPM[0]}–{feedPM[1]}</Text>
+            <Text style={styles.moonText}>
+              Illumination: {(illumination * 100).toFixed(0)}%
+            </Text>
+            <Text style={styles.moonText}>
+              AM Feeding: {feedAM[0]}–{feedAM[1]}
+            </Text>
+            <Text style={styles.moonText}>
+              PM Feeding: {feedPM[0]}–{feedPM[1]}
+            </Text>
           </View>
         </View>
       </SafeAreaView>
@@ -313,17 +313,24 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   background: { flex: 1 },
   safe: { flex: 1, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-  container: { flex: 1, marginTop: -55, marginBottom: -10, padding: 10, backgroundColor: 'rgba(0,0,0,0.4)', margin: 8, borderRadius: 12 },
+  container: {
+    flex: 1,
+    marginTop: -55,
+    marginBottom: -10,
+    padding: 10,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    margin: 8,
+    borderRadius: 12,
+  },
   filterContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   filterLabel: { fontSize: 18, color: '#fff', marginRight: 8 },
   picker: { flex: 1, color: '#fff' },
-  headerText: { fontSize: 22, fontWeight: '700', textAlign: 'center', color: '#FFD700', marginVertical: -20 },
-  calendar: { marginBottom: 12, borderRadius: 8, overflow: 'hidden' },
-  input: { flex: 1, borderColor: '#FFD700', borderWidth: 1, borderRadius: 6, paddingHorizontal: 10, color: '#fff', marginRight: 8 },
-  eventItem: { padding: 12, marginVertical: 4, backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: 6 },
-  eventText: { fontSize: 16, color: '#333' },
-  empty: { textAlign: 'center', color: '#fff', marginTop: 8 },
-  moonInfo: { padding: 12, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 6, marginTop: 12 },
+  moonInfo: {
+    padding: 12,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 6,
+    marginTop: 12,
+  },
   moonText: { fontSize: 14, color: '#fff', marginBottom: 4 },
   modalOverlay: {
     flex: 1,
@@ -331,28 +338,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContent: {
-    width: '80%',
-    backgroundColor: '#222',
-    padding: 20,
-    borderRadius: 8,
-  },
-  modalTitle: {
-    fontSize: 18,
-    color: '#fff',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  modalInput: {
-    backgroundColor: '#333',
-    color: '#fff',
-    borderRadius: 4,
-    padding: 8,
-    marginBottom: 12,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-
+  modalContent: { width: '80%', backgroundColor: '#222', padding: 20, borderRadius: 8 },
+  modalTitle: { fontSize: 18, color: '#fff', marginBottom: 12, textAlign: 'center' },
+  modalInput: { backgroundColor: '#333', color: '#fff', borderRadius: 4, padding: 8, marginBottom: 12 },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-between' },
 });
