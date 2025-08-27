@@ -12,10 +12,41 @@ import {
 import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import SunCalc from 'suncalc';
+
+type MoonInfo = {
+  phaseName: string;
+  fraction: number; // 0..1
+  emoji: string;
+  rise?: Date | null;
+  set?: Date | null;
+};
+
+const getPhaseName = (p: number) => {
+  if (p < 0.03 || p > 0.97) return 'New Moon';
+  if (p < 0.25) return 'Waxing Crescent';
+  if (p < 0.27) return 'First Quarter';
+  if (p < 0.47) return 'Waxing Gibbous';
+  if (p < 0.53) return 'Full Moon';
+  if (p < 0.73) return 'Waning Gibbous';
+  if (p < 0.77) return 'Last Quarter';
+  return 'Waning Crescent';
+};
+
+const getPhaseEmoji = (p: number) => {
+  if (p < 0.03 || p > 0.97) return '🌑';
+  if (p < 0.25) return '🌒';
+  if (p < 0.27) return '🌓';
+  if (p < 0.47) return '🌔';
+  if (p < 0.53) return '🌕';
+  if (p < 0.73) return '🌖';
+  if (p < 0.77) return '🌗';
+  return '🌘';
+};
 
 const { width } = Dimensions.get('window');
 
-// Map weather codes to labels, emojis, and gradients (tuple for TS)
+// Map weather codes to labels, emojis, and gradients
 const weatherCodeMap: Record<number, { label: string; emoji: string; gradient: [string, string] }> = {
   0: { label: 'Clear ', emoji: '☀️', gradient: ['#6190E8', '#A7BFE8'] },
   1: { label: 'Mostly Clear ', emoji: '🌤️', gradient: ['#6190E8', '#A7BFE8'] },
@@ -77,7 +108,7 @@ export default function WeatherScreen() {
     return todayIndex >= 0 ? apiDates.slice(todayIndex) : apiDates;
   }
 
-
+  const [moonByDate, setMoonByDate] = useState<Record<string, MoonInfo>>({});
 
   const localHourKey = `${localDateKey}T${String(now.getHours()).padStart(2, '0')}:00`;
 
@@ -96,9 +127,12 @@ export default function WeatherScreen() {
       setLoading(true);
       setError('');
       try {
+        // 1) Get location
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') throw new Error('Location permission denied');
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+
+        // 2) Fetch weather
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const url =
           `https://api.open-meteo.com/v1/forecast?latitude=${loc.coords.latitude}&longitude=${loc.coords.longitude}` +
@@ -107,19 +141,38 @@ export default function WeatherScreen() {
           `&temperature_unit=fahrenheit&precipitation_unit=inch`;
         const res = await fetch(url);
         const data = await res.json();
+
         setWeather(data);
         const filteredTime = getFilteredDailyTime(data.daily.time);
         setSelectedDailyDate(filteredTime[0]);
-        console.log('Local date:', localDateKey);
-        console.log('API daily time:', data.daily.time);
+        try {
+          const m: Record<string, MoonInfo> = {};
+          for (const dateStr of filteredTime) {
+            const [y, mth, d] = dateStr.split('-').map(Number);
+            const localNoon = new Date(y, mth - 1, d, 12, 0, 0);
 
+            const illum = SunCalc.getMoonIllumination(localNoon);
+            const times = SunCalc.getMoonTimes(localNoon, loc.coords.latitude, loc.coords.longitude, false);
+
+            m[dateStr] = {
+              phaseName: getPhaseName(illum.phase),
+              fraction: illum.fraction,
+              emoji: getPhaseEmoji(illum.phase),
+              rise: times.rise ?? null,
+              set: times.set ?? null,
+            };
+          }
+          setMoonByDate(m);
+        } catch (moonErr) {
+          console.warn('Moon calc failed', moonErr);
+        }
       } catch {
         setError('Could not fetch weather');
       }
       setLoading(false);
-
     })();
   }, []);
+
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" color="#FFD700" />;
   if (error) return <View style={styles.center}><Text style={styles.error}>{error} </Text></View>;
@@ -130,9 +183,8 @@ export default function WeatherScreen() {
 
   // find index for selectedDailyDate
   const filteredDailyTime = getFilteredDailyTime(daily.time);
+  const dailyIdx = daily.time.indexOf(selectedDailyDate);
 
-
-  const validDailyIndex = filteredDailyTime.indexOf(selectedDailyDate);
 
 
   // hourlyIndices for date
@@ -146,6 +198,13 @@ export default function WeatherScreen() {
   }
   const hourlyIndices = dayIndices.slice(startPos, startPos + 12);
 
+  function formatRiseSet(rise?: Date | null, set?: Date | null) {
+    const fmt = (dt?: Date | null) =>
+      dt ? new Date(dt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+    if (!rise && !set) return 'No rise/set';
+    return `Rise ${fmt(rise)} · Set ${fmt(set)}`;
+  }
+
   return (
     <ImageBackground source={require('../../assets/background_image.png')} style={styles.background}>
       <LinearGradient colors={wc.gradient} style={styles.overlay} start={[0, 0]} end={[1, 1]} />
@@ -156,9 +215,21 @@ export default function WeatherScreen() {
           <Text style={styles.emoji}>{wc.emoji} </Text>
           <Text style={styles.temp}>{Math.round(cw.temperature)}°F </Text>
           <Text style={styles.desc}>{wc.label} </Text>
-          <Text style={styles.detail} >
-            High {Math.round(weather.daily.temperature_2m_max[validDailyIndex])}° / Low {Math.round(weather.daily.temperature_2m_min[validDailyIndex])}° </Text>
+          <Text style={styles.detail}>
+            High {Math.round(daily.temperature_2m_max[dailyIdx])}° / Low {Math.round(daily.temperature_2m_min[dailyIdx])}° </Text>
           <Text style={styles.wind}> 💨 {cw.windspeed} mph  {degToCompass(cw.winddirection)} </Text>
+          {/* Moon row */}
+          {moonByDate[selectedDailyDate] && (
+            <View style={{ marginTop: 6, alignSelf: 'stretch' }}>
+              <Text style={{ fontSize: 16, color: '#fff', textAlign: 'center', width: '100%' }}>
+                {moonByDate[selectedDailyDate].emoji} {moonByDate[selectedDailyDate].phaseName} · {Math.round(moonByDate[selectedDailyDate].fraction * 100)}%
+              </Text>
+              <Text style={{ fontSize: 14, color: '#fff', opacity: 0.9, marginTop: 2, textAlign: 'center', width: '100%' }}>
+                {formatRiseSet(moonByDate[selectedDailyDate].rise, moonByDate[selectedDailyDate].set)}
+              </Text>
+            </View>
+          )}
+
         </View>
 
         {/* Hourly */}
@@ -196,6 +267,14 @@ export default function WeatherScreen() {
               <TouchableOpacity onPress={() => setSelectedDailyDate(dateStr)} >
                 <View style={[styles.dailyItem, isSel && styles.dailySelected]} >
                   <Text style={styles.dayText}>{dayLabel} </Text>
+                  <Text style={{ fontSize: 16, marginBottom: 2 }}>
+                    {moonByDate[dateStr]?.emoji ?? ''}
+                  </Text>
+                  {moonByDate[dateStr] && (
+                    <Text style={{ color: '#fff', fontSize: 12, marginBottom: 2 }}>
+                      {Math.round(moonByDate[dateStr].fraction * 100)}%
+                    </Text>
+                  )}
                   <Text style={styles.dailyTemp}>{Math.round(daily.temperature_2m_max[idx])}° </Text>
                   <Text style={styles.dailyMin}>{Math.round(daily.temperature_2m_min[idx])}° </Text>
                 </View>
